@@ -1,0 +1,591 @@
+"""
+Matroid Excel Processing Server
+================================
+FastAPI + uvicorn server that exposes Excel operations over HTTP.
+
+Startup contract with the Flutter host
+---------------------------------------
+When the server is ready it prints exactly one line to stdout:
+
+    PORT:<n>
+
+where <n> is the dynamically chosen port. The Flutter PythonServer class
+reads this line (with a 10-second timeout) to know which port to use.
+
+Build
+------
+See build.sh for the PyInstaller command that packages this into a
+self-contained binary placed alongside the Flutter executable.
+"""
+
+import asyncio
+import base64
+import csv
+import io
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from typing import Any, AsyncGenerator
+
+import openpyxl
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel
+from RestrictedPython import compile_restricted, safe_builtins, safe_globals
+from RestrictedPython.Guards import full_write_guard, safer_getattr
+from RestrictedPython.PrintCollector import PrintCollector
+
+app = FastAPI(title="Matroid Excel Server", docs_url=None, redoc_url=None)
+
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+_MAX_TIMEOUT_SECONDS = 60
+
+# ---------------------------------------------------------------------------
+# In-memory state
+# ---------------------------------------------------------------------------
+
+_workbook: dict[str, Any] = {
+    "bytes": None,
+    "name": None,
+}
+
+
+def _require_workbook() -> None:
+    if _workbook["bytes"] is None:
+        raise HTTPException(status_code=400, detail="No file loaded. Call /load first.")
+
+
+# ---------------------------------------------------------------------------
+# Workbook helper functions (injected as globals into user scripts)
+# ---------------------------------------------------------------------------
+
+
+def _wb_get_data() -> list[dict[str, Any]]:
+    """Return all rows (after the header) as a list of dicts."""
+    if _workbook["bytes"] is None:
+        return []
+    wb = openpyxl.load_workbook(io.BytesIO(_workbook["bytes"]), read_only=True, data_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return []
+    headers = [str(h) if h is not None else f"col{i}" for i, h in enumerate(rows[0])]
+    return [dict(zip(headers, row)) for row in rows[1:]]
+
+
+def _wb_get_sheet_names() -> list[str]:
+    if _workbook["bytes"] is None:
+        return []
+    wb = openpyxl.load_workbook(io.BytesIO(_workbook["bytes"]), read_only=True)
+    return wb.sheetnames
+
+
+def _wb_get_headers() -> list[str]:
+    if _workbook["bytes"] is None:
+        return []
+    wb = openpyxl.load_workbook(io.BytesIO(_workbook["bytes"]), read_only=True, data_only=True)
+    ws = wb.active
+    first_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+    return [str(h) if h is not None else f"col{i}" for i, h in enumerate(first_row)]
+
+
+def _wb_to_csv() -> str:
+    data = _wb_get_data()
+    if not data:
+        return ""
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=list(data[0].keys()))
+    writer.writeheader()
+    writer.writerows(data)
+    return buf.getvalue()
+
+
+def _wb_summarize() -> dict[str, Any]:
+    data = _wb_get_data()
+    if not data:
+        return {}
+    result: dict[str, Any] = {}
+    for key in data[0].keys():
+        values = [row.get(key) for row in data if row.get(key) is not None]
+        result[key] = {
+            "count": len(values),
+            "unique": len({str(v) for v in values}),
+            "sample": values[:3],
+        }
+    return result
+
+
+def _wb_filter_rows(column: str, value: Any) -> list[dict[str, Any]]:
+    return [row for row in _wb_get_data() if str(row.get(column, "")) == str(value)]
+
+
+# ---------------------------------------------------------------------------
+# Execution helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_python(code: str, timeout: int) -> dict[str, Any]:
+    """Execute user Python code in a RestrictedPython sandbox."""
+    # Compile first — catches syntax errors before we touch a thread.
+    try:
+        compiled = compile_restricted(code, "<user_code>", "exec")
+    except SyntaxError as exc:
+        return {"stdout": "", "stderr": "", "error": f"SyntaxError: {exc}", "execution_time_ms": 0}
+
+    # Restricted globals: safe builtins + our Excel helpers.
+    glb: dict[str, Any] = {
+        "__builtins__": safe_builtins,
+        "_print_": PrintCollector,
+        "_getiter_": iter,
+        "_getattr_": safer_getattr,
+        "_getitem_": lambda obj, key: obj[key],
+        "_write_": full_write_guard,
+        "get_data": _wb_get_data,
+        "get_sheet_names": _wb_get_sheet_names,
+        "get_headers": _wb_get_headers,
+        "to_csv": _wb_to_csv,
+        "summarize": _wb_summarize,
+        "filter_rows": _wb_filter_rows,
+    }
+
+    start = time.monotonic()
+
+    def _execute() -> str:
+        exec(compiled, glb)  # noqa: S102
+        # PrintCollector accumulates output; calling _print_() returns the string.
+        printer = glb.get("_print")
+        return printer() if callable(printer) else ""
+
+    # Use shutdown(wait=False) so an infinite-loop thread doesn't block the
+    # API response after the timeout fires.
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(_execute)
+    try:
+        stdout = future.result(timeout=timeout)
+        elapsed = int((time.monotonic() - start) * 1000)
+        executor.shutdown(wait=False)
+        return {"stdout": stdout, "stderr": "", "error": None, "execution_time_ms": elapsed}
+    except FuturesTimeoutError:
+        elapsed = int((time.monotonic() - start) * 1000)
+        executor.shutdown(wait=False)
+        return {
+            "stdout": "",
+            "stderr": "",
+            "error": f"Execution timed out after {timeout}s",
+            "execution_time_ms": elapsed,
+        }
+    except Exception as exc:  # noqa: BLE001
+        elapsed = int((time.monotonic() - start) * 1000)
+        executor.shutdown(wait=False)
+        return {"stdout": "", "stderr": str(exc), "error": str(exc), "execution_time_ms": elapsed}
+
+
+def _run_javascript(code: str, timeout: int) -> dict[str, Any]:
+    """Execute user JavaScript code in a Node.js subprocess."""
+    node_path = shutil.which("node")
+    if node_path is None:
+        return {
+            "stdout": "",
+            "stderr": "",
+            "error": "Node.js not found. Install Node.js to run JavaScript.",
+            "execution_time_ms": 0,
+        }
+
+    # Build the preamble that exposes Excel helper globals to the user's script.
+    data = _wb_get_data()
+    headers = _wb_get_headers()
+    sheets = _wb_get_sheet_names()
+
+    preamble = f"""\
+const _data={json.dumps(data, default=str)};
+const _headers={json.dumps(headers)};
+const _sheets={json.dumps(sheets)};
+function getData(){{return _data;}}
+function getSheetNames(){{return _sheets;}}
+function getHeaders(){{return _headers;}}
+function toCsv(){{
+  if(!_data.length)return'';
+  const h=Object.keys(_data[0]);
+  return[h.join(','),..._data.map(r=>h.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\\n');
+}}
+function summarize(){{
+  const r={{}};
+  _headers.forEach(h=>{{
+    const v=_data.map(row=>row[h]).filter(x=>x!=null);
+    r[h]={{count:v.length,unique:new Set(v.map(String)).size,sample:v.slice(0,3)}};
+  }});
+  return r;
+}}
+function filterRows(col,val){{return _data.filter(r=>String(r[col]??'')===String(val));}}
+"""
+    full_code = preamble + "\n(async () => {\n" + code + "\n})().catch(e => { process.stderr.write(String(e)); process.exit(1); });"
+    start = time.monotonic()
+    try:
+        result = subprocess.run(
+            [node_path, "-e", full_code],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        elapsed = int((time.monotonic() - start) * 1000)
+        error = result.stderr.strip() if result.returncode != 0 else None
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "error": error,
+            "execution_time_ms": elapsed,
+        }
+    except subprocess.TimeoutExpired:
+        elapsed = int((time.monotonic() - start) * 1000)
+        return {
+            "stdout": "",
+            "stderr": "",
+            "error": f"Execution timed out after {timeout}s",
+            "execution_time_ms": elapsed,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Request / response models
+# ---------------------------------------------------------------------------
+
+
+class ExecuteRequest(BaseModel):
+    language: str
+    code: str
+    timeout: int = 10
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.post("/load")
+async def load_file(file: UploadFile = File(...)) -> dict[str, Any]:
+    data = await file.read()
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(data)} bytes). Maximum is {_MAX_UPLOAD_BYTES} bytes.",
+        )
+    _workbook["bytes"] = data
+    _workbook["name"] = file.filename
+    return {
+        "status": "loaded",
+        "filename": file.filename,
+        "size_bytes": len(data),
+    }
+
+
+@app.post("/process")
+async def process(request: Request) -> dict[str, Any]:
+    _require_workbook()
+
+    try:
+        params: dict[str, Any] = await request.json()
+    except Exception:
+        params = {}
+
+    # ---------------------------------------------------------------------------
+    # TODO: replace this stub with real openpyxl / pandas logic.
+    # ---------------------------------------------------------------------------
+
+    return {
+        "status": "processed",
+        "filename": _workbook["name"],
+        "params": params,
+        "rows": 0,  # placeholder
+    }
+
+
+@app.get("/export")
+async def export() -> Response:
+    _require_workbook()
+    safe_name = re.sub(r'[^\w.\-]', '_', _workbook["name"] or "export.xlsx")
+    return Response(
+        content=_workbook["bytes"],
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_name}"'
+        },
+    )
+
+
+@app.post("/unload")
+async def unload() -> dict[str, str]:
+    _workbook["bytes"] = None
+    _workbook["name"] = None
+    return {"status": "unloaded"}
+
+
+@app.post("/execute")
+async def execute(req: ExecuteRequest) -> dict[str, Any]:
+    """Run user-supplied code in a sandboxed environment.
+
+    Python: RestrictedPython sandbox with Excel helper globals.
+    JavaScript: Node.js subprocess (requires Node installed on the server).
+
+    The response always has HTTP 200; execution errors are reported in the
+    ``error`` field so the Flutter client can display them in the output panel.
+    """
+    timeout = min(max(req.timeout, 1), _MAX_TIMEOUT_SECONDS)
+    if req.language == "python":
+        return _run_python(req.code, timeout)
+    if req.language == "javascript":
+        return _run_javascript(req.code, timeout)
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unsupported language '{req.language}'. Use 'python' or 'javascript'.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Chat — Pydantic models
+# ---------------------------------------------------------------------------
+
+
+class ChatAttachment(BaseModel):
+    media_type: str
+    data: str  # base64
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+    attachments: list[ChatAttachment] = []
+
+
+class ChatStreamRequest(BaseModel):
+    provider: str  # "openai" | "anthropic" | "gemini"
+    model: str
+    messages: list[ChatMessage]
+    base_url: str | None = None
+    system_prompt: str | None = None
+    api_keys: dict[str, str] | None = None  # client-side overrides
+
+
+# ---------------------------------------------------------------------------
+# Chat — API key resolution
+# ---------------------------------------------------------------------------
+
+_ENV_KEY_MAP = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GOOGLE_API_KEY",
+}
+
+_DEFAULT_MODELS: dict[str, list[str]] = {
+    "openai": ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "o3-mini"],
+    "anthropic": [
+        "claude-sonnet-4-20250514",
+        "claude-haiku-4-20250414",
+        "claude-opus-4-20250514",
+    ],
+    "gemini": ["gemini-2.0-flash", "gemini-2.5-pro-preview-06-05"],
+}
+
+
+def _get_api_key(provider: str, req: ChatStreamRequest) -> str | None:
+    """Return the API key for *provider* — client override first, then env."""
+    if req.api_keys and provider in req.api_keys:
+        return req.api_keys[provider] or None
+    env_var = _ENV_KEY_MAP.get(provider)
+    return os.environ.get(env_var) if env_var else None
+
+
+# ---------------------------------------------------------------------------
+# Chat — Provider streaming functions
+# ---------------------------------------------------------------------------
+
+
+async def _stream_openai(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+    import openai
+
+    api_key = _get_api_key("openai", req)
+    if not api_key:
+        raise ValueError("OpenAI API key not configured")
+    client = openai.AsyncOpenAI(api_key=api_key, base_url=req.base_url)
+
+    messages: list[dict[str, Any]] = []
+    if req.system_prompt:
+        messages.append({"role": "system", "content": req.system_prompt})
+    for msg in req.messages:
+        if msg.attachments:
+            content: list[dict[str, Any]] = [{"type": "text", "text": msg.content}]
+            for att in msg.attachments:
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{att.media_type};base64,{att.data}"
+                        },
+                    }
+                )
+            messages.append({"role": msg.role, "content": content})
+        else:
+            messages.append({"role": msg.role, "content": msg.content})
+
+    stream = await client.chat.completions.create(
+        model=req.model, messages=messages, stream=True
+    )
+    async for chunk in stream:
+        delta = chunk.choices[0].delta if chunk.choices else None
+        if delta and delta.content:
+            yield delta.content
+
+
+async def _stream_anthropic(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+    import anthropic
+
+    api_key = _get_api_key("anthropic", req)
+    if not api_key:
+        raise ValueError("Anthropic API key not configured")
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+
+    messages: list[dict[str, Any]] = []
+    for msg in req.messages:
+        if msg.attachments:
+            content: list[dict[str, Any]] = []
+            for att in msg.attachments:
+                content.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": att.media_type,
+                            "data": att.data,
+                        },
+                    }
+                )
+            content.append({"type": "text", "text": msg.content})
+            messages.append({"role": msg.role, "content": content})
+        else:
+            messages.append({"role": msg.role, "content": msg.content})
+
+    kwargs: dict[str, Any] = {
+        "model": req.model,
+        "messages": messages,
+        "max_tokens": 4096,
+    }
+    if req.system_prompt:
+        kwargs["system"] = req.system_prompt
+
+    async with client.messages.stream(**kwargs) as stream:
+        async for text in stream.text_stream:
+            yield text
+
+
+async def _stream_gemini(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+    import google.generativeai as genai
+
+    api_key = _get_api_key("gemini", req)
+    if not api_key:
+        raise ValueError("Google AI API key not configured")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(
+        req.model,
+        system_instruction=req.system_prompt if req.system_prompt else None,
+    )
+
+    contents: list[dict[str, Any]] = []
+    for msg in req.messages:
+        role = "user" if msg.role == "user" else "model"
+        parts: list[Any] = [msg.content]
+        for att in msg.attachments:
+            raw = base64.b64decode(att.data)
+            parts.append({"mime_type": att.media_type, "data": raw})
+        contents.append({"role": role, "parts": parts})
+
+    response = await asyncio.to_thread(
+        lambda: model.generate_content(contents, stream=True)
+    )
+    for chunk in response:
+        if chunk.text:
+            yield chunk.text
+
+
+_STREAM_PROVIDERS = {
+    "openai": _stream_openai,
+    "anthropic": _stream_anthropic,
+    "gemini": _stream_gemini,
+}
+
+
+# ---------------------------------------------------------------------------
+# Chat — Endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.get("/chat/models")
+async def chat_models() -> dict[str, Any]:
+    """Return available models per provider based on configured API keys."""
+    providers: dict[str, list[str]] = {}
+    for provider, env_var in _ENV_KEY_MAP.items():
+        if os.environ.get(env_var):
+            providers[provider] = _DEFAULT_MODELS[provider]
+    return {"providers": providers}
+
+
+@app.post("/chat/stream")
+async def chat_stream(req: ChatStreamRequest) -> StreamingResponse:
+    stream_fn = _STREAM_PROVIDERS.get(req.provider)
+    if stream_fn is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown provider '{req.provider}'. Use one of: {list(_STREAM_PROVIDERS)}",
+        )
+
+    async def generate() -> AsyncGenerator[str, None]:
+        try:
+            async for token in stream_fn(req):
+                escaped = token.replace("\n", "\\n")
+                yield f"data: {escaped}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            yield f"event: error\ndata: {exc!s}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+
+if __name__ == "__main__":
+    port = _free_port()
+
+    print(f"PORT:{port}", flush=True)
+
+    uvicorn.run(
+        app,
+        host="127.0.0.1",
+        port=port,
+        log_level="error",
+        access_log=False,
+    )

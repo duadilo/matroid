@@ -1,0 +1,61 @@
+name: matroid
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  http: ^1.2.0
+  file_picker: ^8.0.0
+  path_provider: ^2.1.0
+  crypto: ^3.0.0
+  shared_preferences: ^2.3.0
+  flutter_code_editor: ^0.3.5
+  flutter_highlight: ^0.7.0
+  highlight: ^0.7.0
+  flutter_markdown: ^0.7.3
+  flutter_math_fork: ^0.7.2
+  printing: ^5.13.1
+  pdf: ^3.11.0
+  markdown: ^7.2.2
+  web: ^1.1.0
+  fl_chart: ^0.69.2
+  image_picker: ^1.2.0
+  video_player: ^2.10.0
+  chewie: ^1.13.0
+  accessibility_tools: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+  assets:
+    - assets/bin/
+    - assets/fonts/
+  fonts:
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic-Regular.otf
+        - asset: assets/fonts/OpenDyslexic-Bold.otf
+          weight: 700
+        - asset: assets/fonts/OpenDyslexic-Italic.otf
+          style: italic
+        - asset: assets/fonts/OpenDyslexic-BoldItalic.otf
+          weight: 700
+          style: italic
+    - family: Lexend
+      fonts:
+        - asset: assets/fonts/Lexend-Regular.ttf
+        - asset: assets/fonts/Lexend-Bold.ttf
+          weight: 700

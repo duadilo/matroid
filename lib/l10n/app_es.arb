@@ -1,0 +1,93 @@
+{
+  "@@locale": "es",
+
+  "appTitle": "Matroid",
+  "settingsTitle": "Configuraci\u00f3n",
+  "settingsTooltip": "Configuraci\u00f3n",
+  "navHome": "Inicio",
+  "editorTitle": "Editor",
+
+  "sectionAppearance": "Apariencia",
+  "themeLabel": "Tema",
+  "themeDescription": "Elige la apariencia de la app",
+  "themeLight": "Claro",
+  "themeSystem": "Sistema",
+  "themeDark": "Oscuro",
+
+  "sectionLanguage": "Idioma",
+  "languageLabel": "Idioma",
+  "languageDescription": "Elige el idioma de la app",
+  "languageEnglish": "English",
+  "languageSpanish": "Espa\u00f1ol",
+
+  "fallbackDialogTitle": "Servidor local no disponible",
+  "fallbackDialogBody": "El servidor Python local no pudo gestionar esta solicitud. \u00bfDeseas cambiar al servidor remoto?",
+
+  "buttonNo": "No",
+  "buttonUseRemote": "Usar remoto",
+  "buttonRetry": "Reintentar",
+  "buttonRetryLocal": "Reintentar local",
+
+  "statusStartingServer": "Iniciando servidor local\u2026",
+  "statusRetrying": "Reintentando\u2026 (intento {attempt} de {max})",
+  "statusServerFailed": "El servidor local fall\u00f3 despu\u00e9s de {max} intentos: {error}",
+  "featuresDisabledMessage": "Funciones de Excel desactivadas \u2014 el servidor local fall\u00f3 y se rechaz\u00f3 el modo remoto.",
+
+  "buttonLoadFile": "Cargar archivo",
+  "buttonProcess": "Procesar",
+  "buttonExport": "Exportar",
+  "buttonUnload": "Liberar",
+
+  "statusLoadingFile": "Cargando {fileName}\u2026",
+  "statusLoaded": "Cargado: {fileName}",
+  "statusLoadError": "Error al cargar: {error}",
+
+  "statusProcessing": "Procesando\u2026",
+  "statusProcessResult": "Resultado: {result}",
+  "statusProcessError": "Error al procesar: {error}",
+
+  "statusExporting": "Exportando\u2026",
+  "statusExported": "Exportado: {bytes} bytes.",
+  "statusExportError": "Error al exportar: {error}",
+
+  "statusUnloadSent": "Liberaci\u00f3n enviada (sin esperar respuesta).",
+  "modeLabel": "Modo: {mode}",
+
+  "markdownTitle": "Markdown",
+  "latexTitle": "Matem\u00e1ticas",
+  "buttonExportPdf": "Exportar PDF",
+  "buttonExportHtml": "Exportar HTML",
+  "chartsTitle": "Gráficos",
+
+  "fontLabel": "Fuente",
+  "fontDescription": "Elige el tipo de letra",
+  "fontDefault": "Predeterminada",
+  "fontOpenDyslexic": "OpenDyslexic",
+  "fontLexend": "Lexend",
+
+  "mediaTitle": "Medios",
+  "buttonPickImage": "Elegir imagen",
+  "buttonPickVideo": "Elegir video",
+  "buttonTakePhoto": "Tomar foto",
+  "buttonRecordVideo": "Grabar video",
+  "mediaCameraUnavailable": "Cámara no disponible en esta plataforma",
+  "mediaEmptyState": "Sin medios seleccionados. Usa los botones para elegir o capturar medios.",
+
+  "chatTitle": "Chat",
+  "chatEmptyState": "Selecciona un proveedor y modelo, luego inicia una conversación.",
+  "chatInputHint": "Mensaje\u2026",
+  "chatNewConversation": "Nueva conversación",
+  "chatSend": "Enviar",
+  "chatAttach": "Adjuntar archivo",
+  "chatToggleMarkdown": "Alternar markdown",
+  "chatErrorPrefix": "Error: {error}",
+  "chatNoProviders": "Sin proveedores configurados. Define las claves API en Configuración o como variables de entorno del servidor.",
+  "chatSystemPrompt": "Indicación del sistema",
+
+  "sectionApiKeys": "Claves API",
+  "apiKeyOpenai": "Clave API de OpenAI",
+  "apiKeyAnthropic": "Clave API de Anthropic",
+  "apiKeyGoogle": "Clave API de Google AI",
+  "apiKeySaved": "Guardada",
+  "apiKeyHint": "Ingresa la clave API\u2026"
+}

@@ -1,0 +1,258 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Matroid",
+  "@appTitle": { "description": "Application title shown in the app bar and OS task switcher" },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": { "description": "Title of the settings page" },
+
+  "settingsTooltip": "Settings",
+  "@settingsTooltip": { "description": "Tooltip for the settings icon button" },
+
+  "navHome": "Home",
+  "@navHome": { "description": "Navigation label for the Home destination" },
+
+  "editorTitle": "Editor",
+  "@editorTitle": { "description": "Title of the code editor page and nav destination label" },
+
+  "sectionAppearance": "Appearance",
+  "@sectionAppearance": { "description": "Settings section header for appearance options" },
+
+  "themeLabel": "Theme",
+  "@themeLabel": { "description": "Label for the theme setting row" },
+
+  "themeDescription": "Choose the app appearance",
+  "@themeDescription": { "description": "Subtitle under the theme label" },
+
+  "themeLight": "Light",
+  "@themeLight": { "description": "Light theme option" },
+
+  "themeSystem": "System",
+  "@themeSystem": { "description": "System/auto theme option" },
+
+  "themeDark": "Dark",
+  "@themeDark": { "description": "Dark theme option" },
+
+  "sectionLanguage": "Language",
+  "@sectionLanguage": { "description": "Settings section header for language options" },
+
+  "languageLabel": "Language",
+  "@languageLabel": { "description": "Label for the language setting row" },
+
+  "languageDescription": "Choose the app language",
+  "@languageDescription": { "description": "Subtitle under the language label" },
+
+  "languageEnglish": "English",
+  "@languageEnglish": { "description": "English language option" },
+
+  "languageSpanish": "Spanish",
+  "@languageSpanish": { "description": "Spanish language option" },
+
+  "fallbackDialogTitle": "Local server unavailable",
+  "@fallbackDialogTitle": { "description": "Title of the remote-fallback confirmation dialog" },
+
+  "fallbackDialogBody": "The local Python server failed to handle this request. Would you like to fall back to the remote server instead?",
+  "@fallbackDialogBody": { "description": "Body of the remote-fallback confirmation dialog" },
+
+  "buttonNo": "No",
+  "@buttonNo": { "description": "Generic No button label" },
+
+  "buttonUseRemote": "Use Remote",
+  "@buttonUseRemote": { "description": "Button that switches the app to the remote server" },
+
+  "buttonRetry": "Retry",
+  "@buttonRetry": { "description": "Generic Retry button label" },
+
+  "buttonRetryLocal": "Retry Local",
+  "@buttonRetryLocal": { "description": "Button that retries the local server connection" },
+
+  "statusStartingServer": "Starting local server\u2026",
+  "@statusStartingServer": { "description": "Shown while the local Python server is starting" },
+
+  "statusRetrying": "Retrying\u2026 (attempt {attempt} of {max})",
+  "@statusRetrying": {
+    "description": "Shown while retrying the server connection",
+    "placeholders": {
+      "attempt": { "type": "int", "description": "Current attempt number" },
+      "max":     { "type": "int", "description": "Maximum number of attempts" }
+    }
+  },
+
+  "statusServerFailed": "Local server failed after {max} attempts: {error}",
+  "@statusServerFailed": {
+    "description": "Banner shown when all server connection attempts have failed",
+    "placeholders": {
+      "max":   { "type": "int",    "description": "Maximum number of attempts" },
+      "error": { "type": "String", "description": "Last error message" }
+    }
+  },
+
+  "featuresDisabledMessage": "Excel features disabled \u2014 local server failed and remote fallback was declined.",
+  "@featuresDisabledMessage": { "description": "Banner shown when Excel features are disabled" },
+
+  "buttonLoadFile": "Load File",
+  "@buttonLoadFile": { "description": "Button to pick and load an Excel file" },
+
+  "buttonProcess": "Process",
+  "@buttonProcess": { "description": "Button to process the loaded file" },
+
+  "buttonExport": "Export",
+  "@buttonExport": { "description": "Button to export the processed workbook" },
+
+  "buttonUnload": "Unload",
+  "@buttonUnload": { "description": "Button to unload the current file" },
+
+  "statusLoadingFile": "Loading {fileName}\u2026",
+  "@statusLoadingFile": {
+    "description": "Status shown while loading a file",
+    "placeholders": {
+      "fileName": { "type": "String", "description": "Name of the file being loaded" }
+    }
+  },
+
+  "statusLoaded": "Loaded: {fileName}",
+  "@statusLoaded": {
+    "description": "Status shown after a file is successfully loaded",
+    "placeholders": {
+      "fileName": { "type": "String", "description": "Name of the loaded file" }
+    }
+  },
+
+  "statusLoadError": "Load error: {error}",
+  "@statusLoadError": {
+    "description": "Status shown when file loading fails",
+    "placeholders": {
+      "error": { "type": "String", "description": "Error description" }
+    }
+  },
+
+  "statusProcessing": "Processing\u2026",
+  "@statusProcessing": { "description": "Status shown while the file is being processed" },
+
+  "statusProcessResult": "Process result: {result}",
+  "@statusProcessResult": {
+    "description": "Status shown with the process result",
+    "placeholders": {
+      "result": { "type": "String", "description": "Result data" }
+    }
+  },
+
+  "statusProcessError": "Process error: {error}",
+  "@statusProcessError": {
+    "description": "Status shown when processing fails",
+    "placeholders": {
+      "error": { "type": "String", "description": "Error description" }
+    }
+  },
+
+  "statusExporting": "Exporting\u2026",
+  "@statusExporting": { "description": "Status shown while exporting the workbook" },
+
+  "statusExported": "Exported {bytes} bytes.",
+  "@statusExported": {
+    "description": "Status shown after a successful export",
+    "placeholders": {
+      "bytes": { "type": "int", "description": "Number of bytes in the exported file" }
+    }
+  },
+
+  "statusExportError": "Export error: {error}",
+  "@statusExportError": {
+    "description": "Status shown when export fails",
+    "placeholders": {
+      "error": { "type": "String", "description": "Error description" }
+    }
+  },
+
+  "statusUnloadSent": "Unload sent (fire-and-forget).",
+  "@statusUnloadSent": { "description": "Status shown after the unload request is sent" },
+
+  "modeLabel": "Mode: {mode}",
+  "@modeLabel": {
+    "description": "Small label showing the current server mode",
+    "placeholders": {
+      "mode": { "type": "String", "description": "Server mode name (local or remote)" }
+    }
+  },
+
+  "markdownTitle": "Markdown",
+  "@markdownTitle": { "description": "Title of the Markdown editor/preview page" },
+
+  "latexTitle": "Math",
+  "@latexTitle": { "description": "Title of the LaTeX/Math editor/preview page" },
+
+  "buttonExportPdf": "Export PDF",
+  "@buttonExportPdf": { "description": "Button to export the current content as a PDF" },
+
+  "buttonExportHtml": "Export HTML",
+  "@buttonExportHtml": { "description": "Button to export the current content as HTML" },
+
+  "chartsTitle": "Charts",
+  "@chartsTitle": { "description": "Title of the charts page" },
+
+  "fontLabel": "Font",
+  "@fontLabel": { "description": "Label for the font setting row" },
+  "fontDescription": "Choose the app typeface",
+  "@fontDescription": { "description": "Subtitle under the font label" },
+  "fontDefault": "Default",
+  "@fontDefault": { "description": "System/default font option" },
+  "fontOpenDyslexic": "OpenDyslexic",
+  "@fontOpenDyslexic": { "description": "OpenDyslexic font option" },
+  "fontLexend": "Lexend",
+  "@fontLexend": { "description": "Lexend font option" },
+
+  "mediaTitle": "Media",
+  "@mediaTitle": { "description": "Title of the media page and nav destination label" },
+  "buttonPickImage": "Pick Image",
+  "@buttonPickImage": { "description": "Tooltip for the pick image button" },
+  "buttonPickVideo": "Pick Video",
+  "@buttonPickVideo": { "description": "Tooltip for the pick video button" },
+  "buttonTakePhoto": "Take Photo",
+  "@buttonTakePhoto": { "description": "Tooltip for the take photo button" },
+  "buttonRecordVideo": "Record Video",
+  "@buttonRecordVideo": { "description": "Tooltip for the record video button" },
+  "mediaCameraUnavailable": "Camera not available on this platform",
+  "@mediaCameraUnavailable": { "description": "Message shown when camera is not supported" },
+  "mediaEmptyState": "No media selected. Use the toolbar buttons to pick or capture media.",
+  "@mediaEmptyState": { "description": "Message shown when no media items are loaded" },
+
+  "chatTitle": "Chat",
+  "@chatTitle": { "description": "Title of the chat page and nav destination label" },
+  "chatEmptyState": "Select a provider and model, then start a conversation.",
+  "@chatEmptyState": { "description": "Message shown when no chat messages exist" },
+  "chatInputHint": "Message\u2026",
+  "@chatInputHint": { "description": "Hint text for the chat input field" },
+  "chatNewConversation": "New conversation",
+  "@chatNewConversation": { "description": "Tooltip for the new conversation button" },
+  "chatSend": "Send",
+  "@chatSend": { "description": "Tooltip for the send button" },
+  "chatAttach": "Attach file",
+  "@chatAttach": { "description": "Tooltip for the attach file button" },
+  "chatToggleMarkdown": "Toggle markdown",
+  "@chatToggleMarkdown": { "description": "Tooltip for the markdown toggle button" },
+  "chatErrorPrefix": "Error: {error}",
+  "@chatErrorPrefix": {
+    "description": "Prefix for chat error messages",
+    "placeholders": {
+      "error": { "type": "String", "description": "The error message" }
+    }
+  },
+  "chatNoProviders": "No providers configured. Set API keys in Settings or as server environment variables.",
+  "@chatNoProviders": { "description": "Message shown when no chat providers are available" },
+  "chatSystemPrompt": "System prompt",
+  "@chatSystemPrompt": { "description": "Label for the system prompt field" },
+
+  "sectionApiKeys": "API Keys",
+  "@sectionApiKeys": { "description": "Settings section header for API keys" },
+  "apiKeyOpenai": "OpenAI API Key",
+  "@apiKeyOpenai": { "description": "Label for the OpenAI API key field" },
+  "apiKeyAnthropic": "Anthropic API Key",
+  "@apiKeyAnthropic": { "description": "Label for the Anthropic API key field" },
+  "apiKeyGoogle": "Google AI API Key",
+  "@apiKeyGoogle": { "description": "Label for the Google AI API key field" },
+  "apiKeySaved": "Saved",
+  "@apiKeySaved": { "description": "Snackbar message when an API key is saved" },
+  "apiKeyHint": "Enter API key\u2026",
+  "@apiKeyHint": { "description": "Hint text for API key input fields" }
+}
