@@ -127,6 +127,27 @@ class _MainAppState extends State<MainApp> {
 
   void _rebuild() => setState(() {});
 
+  /// Build a ThemeData with the custom font applied to its own textTheme.
+  ///
+  /// We build the theme first, then apply fontFamily to the theme's own
+  /// textTheme so colors/sizes match the brightness. Passing a foreign
+  /// textTheme (e.g. from `ThemeData()`) breaks dark-mode text colors
+  /// and causes fl_chart axis labels to disappear.
+  static ThemeData _buildTheme(Brightness brightness, String? fontFamilyName) {
+    var theme = ThemeData(
+      colorSchemeSeed: Colors.indigo,
+      brightness: brightness,
+      useMaterial3: true,
+      fontFamily: fontFamilyName,
+    );
+    if (fontFamilyName != null) {
+      theme = theme.copyWith(
+        textTheme: theme.textTheme.apply(fontFamily: fontFamilyName),
+      );
+    }
+    return theme;
+  }
+
   @override
   Widget build(BuildContext context) {
     final fontFamilyName = switch (AppSettings.instance.fontFamily.value) {
@@ -141,17 +162,8 @@ class _MainAppState extends State<MainApp> {
       supportedLocales: AppLocalizations.supportedLocales,
       locale: AppSettings.instance.locale.value,
       themeMode: AppSettings.instance.themeMode.value,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        fontFamily: fontFamilyName,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.dark,
-        useMaterial3: true,
-        fontFamily: fontFamilyName,
-      ),
+      theme: _buildTheme(Brightness.light, fontFamilyName),
+      darkTheme: _buildTheme(Brightness.dark, fontFamilyName),
       builder: kDebugMode
           ? (context, child) => AccessibilityTools(child: child)
           : null,

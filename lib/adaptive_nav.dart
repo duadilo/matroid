@@ -139,6 +139,9 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
             extended: _railExtended,
             leading: IconButton(
               icon: Icon(_railExtended ? Icons.menu_open : Icons.menu),
+              tooltip: _railExtended
+                  ? MaterialLocalizations.of(context).closeButtonTooltip
+                  : MaterialLocalizations.of(context).openAppDrawerTooltip,
               onPressed: () =>
                   setState(() => _railExtended = !_railExtended),
             ),
