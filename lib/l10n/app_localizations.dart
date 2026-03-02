@@ -541,6 +541,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter API key…'**
   String get apiKeyHint;
+
+  /// Tooltip when web search tools are enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Web search enabled'**
+  String get chatToolsEnabled;
+
+  /// Tooltip when web search tools are disabled
+  ///
+  /// In en, this message translates to:
+  /// **'Web search disabled'**
+  String get chatToolsDisabled;
+
+  /// Label shown while a web search is in progress
+  ///
+  /// In en, this message translates to:
+  /// **'Searching: {query}'**
+  String chatSearching(String query);
+
+  /// Label shown after a web search completes
+  ///
+  /// In en, this message translates to:
+  /// **'Searched: {query}'**
+  String chatSearched(String query);
 }
 
 class _AppLocalizationsDelegate

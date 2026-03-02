@@ -52,7 +52,7 @@ void main() {
   });
 
   group('streamChat', () {
-    test('yields tokens from SSE data lines', () async {
+    test('yields TextToken from SSE data lines', () async {
       final client = _StreamMockClient([
         'data: Hello\n',
         '\n',
@@ -69,7 +69,7 @@ void main() {
         remoteBaseUrl: base,
       );
 
-      final tokens = await service
+      final events = await service
           .streamChat(
             provider: 'openai',
             model: 'gpt-4o',
@@ -79,7 +79,10 @@ void main() {
           )
           .toList();
 
-      expect(tokens, ['Hello', ' world']);
+      expect(events.length, 2);
+      expect(events[0], isA<TextToken>());
+      expect((events[0] as TextToken).text, 'Hello');
+      expect((events[1] as TextToken).text, ' world');
     });
 
     test('terminates on [DONE]', () async {
@@ -99,7 +102,7 @@ void main() {
         remoteBaseUrl: base,
       );
 
-      final tokens = await service
+      final events = await service
           .streamChat(
             provider: 'openai',
             model: 'gpt-4o',
@@ -109,7 +112,8 @@ void main() {
           )
           .toList();
 
-      expect(tokens, ['token1']);
+      expect(events.length, 1);
+      expect((events[0] as TextToken).text, 'token1');
     });
 
     test('unescapes \\n in tokens', () async {
@@ -127,7 +131,7 @@ void main() {
         remoteBaseUrl: base,
       );
 
-      final tokens = await service
+      final events = await service
           .streamChat(
             provider: 'openai',
             model: 'gpt-4o',
@@ -137,7 +141,117 @@ void main() {
           )
           .toList();
 
-      expect(tokens, ['line1\nline2']);
+      expect(events.length, 1);
+      expect((events[0] as TextToken).text, 'line1\nline2');
+    });
+
+    test('yields ToolUseEvent from SSE event: tool_use line', () async {
+      final client = _StreamMockClient([
+        'event: tool_use\n',
+        'data: {"name":"web_search","input":{"query":"flutter"}}\n',
+        '\n',
+        'data: [DONE]\n',
+        '\n',
+      ]);
+
+      final service = ChatService(
+        mode: ServerMode.remote,
+        server: null,
+        httpClient: client,
+        remoteBaseUrl: base,
+      );
+
+      final events = await service
+          .streamChat(
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: [
+              const ChatMessageModel(role: 'user', content: 'Hi')
+            ],
+            toolsEnabled: true,
+          )
+          .toList();
+
+      expect(events.length, 1);
+      expect(events[0], isA<ToolUseEvent>());
+      final tue = events[0] as ToolUseEvent;
+      expect(tue.name, 'web_search');
+      expect(tue.input['query'], 'flutter');
+    });
+
+    test('yields ToolResultEvent from SSE event: tool_result line', () async {
+      final client = _StreamMockClient([
+        'event: tool_result\n',
+        'data: {"name":"web_search"}\n',
+        '\n',
+        'data: [DONE]\n',
+        '\n',
+      ]);
+
+      final service = ChatService(
+        mode: ServerMode.remote,
+        server: null,
+        httpClient: client,
+        remoteBaseUrl: base,
+      );
+
+      final events = await service
+          .streamChat(
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: [
+              const ChatMessageModel(role: 'user', content: 'Hi')
+            ],
+            toolsEnabled: true,
+          )
+          .toList();
+
+      expect(events.length, 1);
+      expect(events[0], isA<ToolResultEvent>());
+      expect((events[0] as ToolResultEvent).name, 'web_search');
+    });
+
+    test('interleaves TextToken and ToolUseEvent correctly', () async {
+      final client = _StreamMockClient([
+        'data: Let me search\n',
+        '\n',
+        'event: tool_use\n',
+        'data: {"name":"web_search","input":{"query":"dart"}}\n',
+        '\n',
+        'event: tool_result\n',
+        'data: {"name":"web_search"}\n',
+        '\n',
+        'data: Here are results\n',
+        '\n',
+        'data: [DONE]\n',
+        '\n',
+      ]);
+
+      final service = ChatService(
+        mode: ServerMode.remote,
+        server: null,
+        httpClient: client,
+        remoteBaseUrl: base,
+      );
+
+      final events = await service
+          .streamChat(
+            provider: 'openai',
+            model: 'gpt-4o',
+            messages: [
+              const ChatMessageModel(role: 'user', content: 'Hi')
+            ],
+            toolsEnabled: true,
+          )
+          .toList();
+
+      expect(events.length, 4);
+      expect(events[0], isA<TextToken>());
+      expect((events[0] as TextToken).text, 'Let me search');
+      expect(events[1], isA<ToolUseEvent>());
+      expect(events[2], isA<ToolResultEvent>());
+      expect(events[3], isA<TextToken>());
+      expect((events[3] as TextToken).text, 'Here are results');
     });
   });
 }

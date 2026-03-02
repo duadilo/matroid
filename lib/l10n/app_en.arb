@@ -254,5 +254,24 @@
   "apiKeySaved": "Saved",
   "@apiKeySaved": { "description": "Snackbar message when an API key is saved" },
   "apiKeyHint": "Enter API key\u2026",
-  "@apiKeyHint": { "description": "Hint text for API key input fields" }
+  "@apiKeyHint": { "description": "Hint text for API key input fields" },
+
+  "chatToolsEnabled": "Web search enabled",
+  "@chatToolsEnabled": { "description": "Tooltip when web search tools are enabled" },
+  "chatToolsDisabled": "Web search disabled",
+  "@chatToolsDisabled": { "description": "Tooltip when web search tools are disabled" },
+  "chatSearching": "Searching: {query}",
+  "@chatSearching": {
+    "description": "Label shown while a web search is in progress",
+    "placeholders": {
+      "query": { "type": "String", "description": "The search query" }
+    }
+  },
+  "chatSearched": "Searched: {query}",
+  "@chatSearched": {
+    "description": "Label shown after a web search completes",
+    "placeholders": {
+      "query": { "type": "String", "description": "The search query" }
+    }
+  }
 }

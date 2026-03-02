@@ -256,4 +256,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiKeyHint => 'Enter API key…';
+
+  @override
+  String get chatToolsEnabled => 'Web search enabled';
+
+  @override
+  String get chatToolsDisabled => 'Web search disabled';
+
+  @override
+  String chatSearching(String query) {
+    return 'Searching: $query';
+  }
+
+  @override
+  String chatSearched(String query) {
+    return 'Searched: $query';
+  }
 }

@@ -377,6 +377,7 @@ class ChatStreamRequest(BaseModel):
     base_url: str | None = None
     system_prompt: str | None = None
     api_keys: dict[str, str] | None = None  # client-side overrides
+    tools_enabled: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -409,11 +410,29 @@ def _get_api_key(provider: str, req: ChatStreamRequest) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Chat — Web search tool
+# ---------------------------------------------------------------------------
+
+
+def _web_search(query: str, max_results: int = 5) -> str:
+    """Execute a web search using DuckDuckGo and return formatted results."""
+    from duckduckgo_search import DDGS
+
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query, max_results=max_results))
+    if not results:
+        return "No results found."
+    return "\n\n".join(
+        f"[{r['title']}]({r['href']})\n{r['body']}" for r in results
+    )
+
+
+# ---------------------------------------------------------------------------
 # Chat — Provider streaming functions
 # ---------------------------------------------------------------------------
 
 
-async def _stream_openai(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+async def _stream_openai(req: ChatStreamRequest) -> AsyncGenerator[tuple[str, Any], None]:
     import openai
 
     api_key = _get_api_key("openai", req)
@@ -440,16 +459,90 @@ async def _stream_openai(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
         else:
             messages.append({"role": msg.role, "content": msg.content})
 
-    stream = await client.chat.completions.create(
-        model=req.model, messages=messages, stream=True
-    )
-    async for chunk in stream:
-        delta = chunk.choices[0].delta if chunk.choices else None
-        if delta and delta.content:
-            yield delta.content
+    tools = None
+    if req.tools_enabled:
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "web_search",
+                    "description": "Search the web for current information",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                    },
+                },
+            }
+        ]
+
+    kwargs: dict[str, Any] = {"model": req.model, "messages": messages, "stream": True}
+    if tools:
+        kwargs["tools"] = tools
+
+    while True:
+        stream = await client.chat.completions.create(**kwargs)
+        tool_calls_acc: dict[int, dict[str, str]] = {}  # index → {id, name, arguments}
+        finish_reason = None
+
+        async for chunk in stream:
+            choice = chunk.choices[0] if chunk.choices else None
+            if not choice:
+                continue
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
+            delta = choice.delta
+            if delta and delta.content:
+                yield ("text", delta.content)
+            if delta and delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_acc:
+                        tool_calls_acc[idx] = {"id": "", "name": "", "arguments": ""}
+                    if tc.id:
+                        tool_calls_acc[idx]["id"] = tc.id
+                    if tc.function and tc.function.name:
+                        tool_calls_acc[idx]["name"] = tc.function.name
+                    if tc.function and tc.function.arguments:
+                        tool_calls_acc[idx]["arguments"] += tc.function.arguments
+
+        if finish_reason != "tool_calls" or not tool_calls_acc:
+            break
+
+        # Execute tool calls and feed results back
+        assistant_msg: dict[str, Any] = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                }
+                for tc in tool_calls_acc.values()
+            ],
+        }
+        messages.append(assistant_msg)
+
+        for tc in tool_calls_acc.values():
+            args = json.loads(tc["arguments"])
+            if tc["name"] == "web_search":
+                query = args.get("query", "")
+                yield ("tool_use", {"name": "web_search", "input": {"query": query}})
+                result = await asyncio.to_thread(_web_search, query)
+                yield ("tool_result", {"name": "web_search"})
+            else:
+                result = f"Unknown tool: {tc['name']}"
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc["id"],
+                "content": result,
+            })
+
+        kwargs["messages"] = messages
 
 
-async def _stream_anthropic(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+async def _stream_anthropic(req: ChatStreamRequest) -> AsyncGenerator[tuple[str, Any], None]:
     import anthropic
 
     api_key = _get_api_key("anthropic", req)
@@ -485,21 +578,62 @@ async def _stream_anthropic(req: ChatStreamRequest) -> AsyncGenerator[str, None]
     if req.system_prompt:
         kwargs["system"] = req.system_prompt
 
-    async with client.messages.stream(**kwargs) as stream:
-        async for text in stream.text_stream:
-            yield text
+    if req.tools_enabled:
+        kwargs["tools"] = [
+            {"type": "web_search_20250305", "name": "web_search", "max_uses": 5}
+        ]
+
+    if not req.tools_enabled:
+        async with client.messages.stream(**kwargs) as stream:
+            async for text in stream.text_stream:
+                yield ("text", text)
+    else:
+        async with client.messages.stream(**kwargs) as stream:
+            async for event in stream:
+                if event.type == "content_block_start":
+                    block = event.content_block
+                    if hasattr(block, "type") and block.type == "server_tool_use":
+                        yield ("tool_use", {"name": block.name, "input": getattr(block, "input", {})})
+                elif event.type == "content_block_stop":
+                    # Check if the stopped block was a tool result
+                    pass
+                elif event.type == "text":
+                    yield ("text", event.text)
+            # After the stream, check the final message for tool results
+            msg = await stream.get_final_message()
+            for block in msg.content:
+                if hasattr(block, "type") and block.type == "web_search_tool_result":
+                    yield ("tool_result", {"name": "web_search"})
 
 
-async def _stream_gemini(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
+async def _stream_gemini(req: ChatStreamRequest) -> AsyncGenerator[tuple[str, Any], None]:
     import google.generativeai as genai
 
     api_key = _get_api_key("gemini", req)
     if not api_key:
         raise ValueError("Google AI API key not configured")
     genai.configure(api_key=api_key)
+
+    tools_kwarg = None
+    if req.tools_enabled:
+        tools_kwarg = genai.types.Tool(
+            function_declarations=[
+                genai.types.FunctionDeclaration(
+                    name="web_search",
+                    description="Search the web for current information",
+                    parameters={
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                    },
+                )
+            ]
+        )
+
     model = genai.GenerativeModel(
         req.model,
         system_instruction=req.system_prompt if req.system_prompt else None,
+        tools=[tools_kwarg] if tools_kwarg else None,
     )
 
     contents: list[dict[str, Any]] = []
@@ -511,12 +645,34 @@ async def _stream_gemini(req: ChatStreamRequest) -> AsyncGenerator[str, None]:
             parts.append({"mime_type": att.media_type, "data": raw})
         contents.append({"role": role, "parts": parts})
 
-    response = await asyncio.to_thread(
-        lambda: model.generate_content(contents, stream=True)
-    )
-    for chunk in response:
-        if chunk.text:
-            yield chunk.text
+    chat = model.start_chat(history=contents[:-1] if len(contents) > 1 else [])
+    last_user = contents[-1] if contents else {"role": "user", "parts": [""]}
+
+    while True:
+        response = await asyncio.to_thread(
+            lambda parts=last_user["parts"]: chat.send_message(parts, stream=True)
+        )
+        has_function_call = False
+        for chunk in response:
+            for part in chunk.parts:
+                if hasattr(part, "function_call") and part.function_call.name:
+                    fc = part.function_call
+                    query = dict(fc.args).get("query", "")
+                    yield ("tool_use", {"name": "web_search", "input": {"query": query}})
+                    result = _web_search(query)
+                    yield ("tool_result", {"name": "web_search"})
+                    last_user = {
+                        "role": "user",
+                        "parts": [genai.types.content_types.to_part(
+                            genai.types.FunctionResponse(name="web_search", response={"result": result})
+                        )],
+                    }
+                    has_function_call = True
+                elif hasattr(part, "text") and part.text:
+                    yield ("text", part.text)
+
+        if not has_function_call:
+            break
 
 
 _STREAM_PROVIDERS = {
@@ -552,9 +708,14 @@ async def chat_stream(req: ChatStreamRequest) -> StreamingResponse:
 
     async def generate() -> AsyncGenerator[str, None]:
         try:
-            async for token in stream_fn(req):
-                escaped = token.replace("\n", "\\n")
-                yield f"data: {escaped}\n\n"
+            async for event_type, payload in stream_fn(req):
+                if event_type == "text":
+                    escaped = payload.replace("\n", "\\n")
+                    yield f"data: {escaped}\n\n"
+                elif event_type == "tool_use":
+                    yield f"event: tool_use\ndata: {json.dumps(payload)}\n\n"
+                elif event_type == "tool_result":
+                    yield f"event: tool_result\ndata: {json.dumps(payload)}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as exc:
             yield f"event: error\ndata: {exc!s}\n\n"

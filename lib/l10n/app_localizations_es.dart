@@ -257,4 +257,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get apiKeyHint => 'Ingresa la clave API…';
+
+  @override
+  String get chatToolsEnabled => 'Búsqueda web activada';
+
+  @override
+  String get chatToolsDisabled => 'Búsqueda web desactivada';
+
+  @override
+  String chatSearching(String query) {
+    return 'Buscando: $query';
+  }
+
+  @override
+  String chatSearched(String query) {
+    return 'Buscado: $query';
+  }
 }

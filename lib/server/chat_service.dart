@@ -58,6 +58,28 @@ class ProviderModels {
 }
 
 // ---------------------------------------------------------------------------
+// Chat stream event types
+// ---------------------------------------------------------------------------
+
+sealed class ChatStreamEvent {}
+
+class TextToken extends ChatStreamEvent {
+  TextToken(this.text);
+  final String text;
+}
+
+class ToolUseEvent extends ChatStreamEvent {
+  ToolUseEvent({required this.name, required this.input});
+  final String name;
+  final Map<String, dynamic> input;
+}
+
+class ToolResultEvent extends ChatStreamEvent {
+  ToolResultEvent({required this.name});
+  final String name;
+}
+
+// ---------------------------------------------------------------------------
 // ChatService
 // ---------------------------------------------------------------------------
 
@@ -95,13 +117,14 @@ class ChatService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Stream<String> streamChat({
+  Stream<ChatStreamEvent> streamChat({
     required String provider,
     required String model,
     required List<ChatMessageModel> messages,
     String? baseUrl,
     String? systemPrompt,
     Map<String, String>? apiKeys,
+    bool toolsEnabled = false,
   }) async* {
     final body = jsonEncode({
       'provider': provider,
@@ -111,6 +134,7 @@ class ChatService {
       if (systemPrompt != null && systemPrompt.isNotEmpty)
         'system_prompt': systemPrompt,
       if (apiKeys != null && apiKeys.isNotEmpty) 'api_keys': apiKeys,
+      'tools_enabled': toolsEnabled,
     });
 
     final request = http.Request('POST', Uri.parse('$_base/chat/stream'))
@@ -123,17 +147,36 @@ class ChatService {
       throw Exception('HTTP ${streamed.statusCode}: $responseBody');
     }
 
+    String? pendingEvent;
+
     await for (final line
         in streamed.stream.transform(utf8.decoder).transform(const LineSplitter())) {
-      if (line.startsWith('event: error')) {
-        // Next line will be data: <error message>
+      if (line.startsWith('event: ')) {
+        pendingEvent = line.substring(7);
         continue;
       }
       if (line.startsWith('data: ')) {
         final payload = line.substring(6);
         if (payload == '[DONE]') return;
-        // Unescape \n → real newlines
-        yield payload.replaceAll(r'\n', '\n');
+
+        if (pendingEvent == 'tool_use') {
+          final json = jsonDecode(payload) as Map<String, dynamic>;
+          yield ToolUseEvent(
+            name: json['name'] as String,
+            input: (json['input'] as Map<String, dynamic>?) ?? {},
+          );
+          pendingEvent = null;
+        } else if (pendingEvent == 'tool_result') {
+          final json = jsonDecode(payload) as Map<String, dynamic>;
+          yield ToolResultEvent(name: json['name'] as String);
+          pendingEvent = null;
+        } else if (pendingEvent == 'error') {
+          pendingEvent = null;
+          throw Exception(payload);
+        } else {
+          yield TextToken(payload.replaceAll(r'\n', '\n'));
+          pendingEvent = null;
+        }
       }
     }
   }

@@ -129,6 +129,13 @@ void main() {
     expect(find.byIcon(Icons.add_comment_outlined), findsOneWidget);
   });
 
+  testWidgets('Tools toggle button is present', (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.travel_explore_outlined), findsOneWidget);
+  });
+
   testWidgets('Provider dropdown present after models load', (tester) async {
     await tester.pumpWidget(_buildAppWithModels());
     await tester.pumpAndSettle();

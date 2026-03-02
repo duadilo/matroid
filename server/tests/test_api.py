@@ -417,7 +417,7 @@ class TestChatStream:
     def test_openai_stream_tokens(self):
         async def mock_stream(req):
             for token in ["Hello", " world"]:
-                yield token
+                yield ("text", token)
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["openai"]
@@ -442,7 +442,7 @@ class TestChatStream:
     def test_anthropic_stream_tokens(self):
         async def mock_stream(req):
             for token in ["Bonjour"]:
-                yield token
+                yield ("text", token)
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["anthropic"]
@@ -464,7 +464,7 @@ class TestChatStream:
     def test_gemini_stream_tokens(self):
         async def mock_stream(req):
             for token in ["Hola"]:
-                yield token
+                yield ("text", token)
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["gemini"]
@@ -488,7 +488,7 @@ class TestChatStream:
         img_data = base64.b64encode(b"\x89PNG\r\n").decode()
 
         async def mock_stream(req):
-            yield "ok"
+            yield ("text", "ok")
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["openai"]
@@ -519,7 +519,7 @@ class TestChatStream:
         """api_keys in request body should be used instead of env var."""
 
         async def mock_stream(req):
-            yield "used-override"
+            yield ("text", "used-override")
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["openai"]
@@ -544,7 +544,7 @@ class TestChatStream:
         """Tokens containing newlines should be escaped in SSE output."""
 
         async def mock_stream(req):
-            yield "line1\nline2"
+            yield ("text", "line1\nline2")
 
         from main import _STREAM_PROVIDERS
         orig = _STREAM_PROVIDERS["openai"]
@@ -562,3 +562,157 @@ class TestChatStream:
             assert "data: line1\\nline2" in r.text
         finally:
             _STREAM_PROVIDERS["openai"] = orig
+
+
+# ---------------------------------------------------------------------------
+# Chat tools tests
+# ---------------------------------------------------------------------------
+
+
+class TestChatTools:
+    def test_tools_disabled_no_tool_events(self):
+        """With tools_enabled=False, no event: lines should appear."""
+
+        async def mock_stream(req):
+            yield ("text", "Hello")
+
+        from main import _STREAM_PROVIDERS
+        orig = _STREAM_PROVIDERS["openai"]
+        _STREAM_PROVIDERS["openai"] = mock_stream
+        try:
+            r = client.post(
+                "/chat/stream",
+                json={
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "tools_enabled": False,
+                },
+            )
+            assert r.status_code == 200
+            assert "event: tool_use" not in r.text
+            assert "event: tool_result" not in r.text
+            assert "data: Hello" in r.text
+        finally:
+            _STREAM_PROVIDERS["openai"] = orig
+
+    def test_tools_enabled_stream_with_tool_events(self):
+        """Tool use and result events should appear in SSE output."""
+
+        async def mock_stream(req):
+            yield ("text", "Let me search")
+            yield ("tool_use", {"name": "web_search", "input": {"query": "flutter"}})
+            yield ("tool_result", {"name": "web_search"})
+            yield ("text", " the results")
+
+        from main import _STREAM_PROVIDERS
+        orig = _STREAM_PROVIDERS["openai"]
+        _STREAM_PROVIDERS["openai"] = mock_stream
+        try:
+            r = client.post(
+                "/chat/stream",
+                json={
+                    "provider": "openai",
+                    "model": "gpt-4o",
+                    "messages": [{"role": "user", "content": "search flutter"}],
+                    "tools_enabled": True,
+                },
+            )
+            assert r.status_code == 200
+            assert "event: tool_use" in r.text
+            assert "event: tool_result" in r.text
+            assert "data: Let me search" in r.text
+            assert "data:  the results" in r.text
+            assert "data: [DONE]" in r.text
+        finally:
+            _STREAM_PROVIDERS["openai"] = orig
+
+    def test_web_search_executor(self):
+        """_web_search should return formatted results from DDGS."""
+        mock_results = [
+            {"title": "Flutter", "href": "https://flutter.dev", "body": "Build apps"},
+            {"title": "Dart", "href": "https://dart.dev", "body": "Language"},
+        ]
+
+        with patch("duckduckgo_search.DDGS") as MockDDGS:
+            mock_ddgs = MagicMock()
+            mock_ddgs.__enter__ = MagicMock(return_value=mock_ddgs)
+            mock_ddgs.__exit__ = MagicMock(return_value=False)
+            mock_ddgs.text.return_value = mock_results
+            MockDDGS.return_value = mock_ddgs
+
+            from main import _web_search
+            result = _web_search("flutter")
+
+        assert "Flutter" in result
+        assert "https://flutter.dev" in result
+        assert "Build apps" in result
+        assert "Dart" in result
+
+    def test_web_search_executor_no_results(self):
+        """_web_search should return fallback message when no results."""
+        with patch("duckduckgo_search.DDGS") as MockDDGS:
+            mock_ddgs = MagicMock()
+            mock_ddgs.__enter__ = MagicMock(return_value=mock_ddgs)
+            mock_ddgs.__exit__ = MagicMock(return_value=False)
+            mock_ddgs.text.return_value = []
+            MockDDGS.return_value = mock_ddgs
+
+            from main import _web_search
+            result = _web_search("nonexistent query")
+
+        assert result == "No results found."
+
+    def test_tools_enabled_anthropic_tool_events(self):
+        """Anthropic-sourced tool events should appear in SSE output."""
+
+        async def mock_stream(req):
+            yield ("tool_use", {"name": "web_search", "input": {"query": "test"}})
+            yield ("text", "Here are the results")
+            yield ("tool_result", {"name": "web_search"})
+
+        from main import _STREAM_PROVIDERS
+        orig = _STREAM_PROVIDERS["anthropic"]
+        _STREAM_PROVIDERS["anthropic"] = mock_stream
+        try:
+            r = client.post(
+                "/chat/stream",
+                json={
+                    "provider": "anthropic",
+                    "model": "claude-sonnet-4-20250514",
+                    "messages": [{"role": "user", "content": "search test"}],
+                    "tools_enabled": True,
+                },
+            )
+            assert r.status_code == 200
+            assert "event: tool_use" in r.text
+            assert "event: tool_result" in r.text
+        finally:
+            _STREAM_PROVIDERS["anthropic"] = orig
+
+    def test_tools_enabled_gemini_tool_events(self):
+        """Gemini-sourced tool events should appear in SSE output."""
+
+        async def mock_stream(req):
+            yield ("tool_use", {"name": "web_search", "input": {"query": "test"}})
+            yield ("tool_result", {"name": "web_search"})
+            yield ("text", "Found it")
+
+        from main import _STREAM_PROVIDERS
+        orig = _STREAM_PROVIDERS["gemini"]
+        _STREAM_PROVIDERS["gemini"] = mock_stream
+        try:
+            r = client.post(
+                "/chat/stream",
+                json={
+                    "provider": "gemini",
+                    "model": "gemini-2.0-flash",
+                    "messages": [{"role": "user", "content": "search test"}],
+                    "tools_enabled": True,
+                },
+            )
+            assert r.status_code == 200
+            assert "event: tool_use" in r.text
+            assert "data: Found it" in r.text
+        finally:
+            _STREAM_PROVIDERS["gemini"] = orig

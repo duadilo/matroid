@@ -89,5 +89,10 @@
   "apiKeyAnthropic": "Clave API de Anthropic",
   "apiKeyGoogle": "Clave API de Google AI",
   "apiKeySaved": "Guardada",
-  "apiKeyHint": "Ingresa la clave API\u2026"
+  "apiKeyHint": "Ingresa la clave API\u2026",
+
+  "chatToolsEnabled": "Búsqueda web activada",
+  "chatToolsDisabled": "Búsqueda web desactivada",
+  "chatSearching": "Buscando: {query}",
+  "chatSearched": "Buscado: {query}"
 }

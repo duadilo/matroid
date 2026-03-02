@@ -15,6 +15,13 @@ import '../server/chat_service.dart';
 
 enum _ChatRole { user, assistant }
 
+class _ToolUse {
+  _ToolUse({required this.name, this.query});
+  final String name;
+  String? query;
+  bool isComplete = false;
+}
+
 class _ChatMessage {
   _ChatMessage({
     required this.role,
@@ -26,6 +33,7 @@ class _ChatMessage {
   final _ChatRole role;
   String content;
   final List<_Attachment> attachments;
+  final List<_ToolUse> toolUses = [];
   bool isStreaming;
   bool hasError = false;
 }
@@ -62,6 +70,7 @@ class _ChatContentState extends State<ChatContent> {
   String? _selectedModel;
   String _systemPrompt = '';
   bool _systemPromptExpanded = false;
+  bool _toolsEnabled = false;
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   String? _modelsError;
@@ -146,17 +155,29 @@ class _ChatContentState extends State<ChatContent> {
 
       final apiKeys = AppSettings.instance.apiKeys;
 
-      await for (final token in chatService!.streamChat(
+      await for (final event in chatService!.streamChat(
         provider: _selectedProvider!,
         model: _selectedModel!,
         messages: chatMessages,
         systemPrompt: _systemPrompt,
         apiKeys: apiKeys.isNotEmpty ? apiKeys : null,
+        toolsEnabled: _toolsEnabled,
       )) {
         if (!mounted) return;
-        setState(() {
-          assistantMsg.content += token;
-        });
+        if (event is TextToken) {
+          assistantMsg.content += event.text;
+        } else if (event is ToolUseEvent) {
+          assistantMsg.toolUses.add(
+            _ToolUse(name: event.name, query: event.input['query'] as String?),
+          );
+        } else if (event is ToolResultEvent) {
+          final tu = assistantMsg.toolUses.lastWhere(
+            (t) => t.name == event.name,
+            orElse: () => _ToolUse(name: event.name),
+          );
+          tu.isComplete = true;
+        }
+        setState(() {});
         _scrollToBottom();
       }
     } catch (e) {
@@ -350,6 +371,16 @@ class _ChatContentState extends State<ChatContent> {
                     () => _systemPromptExpanded = !_systemPromptExpanded),
               ),
               IconButton(
+                icon: Icon(_toolsEnabled
+                    ? Icons.travel_explore
+                    : Icons.travel_explore_outlined),
+                tooltip: _toolsEnabled
+                    ? l10n.chatToolsEnabled
+                    : l10n.chatToolsDisabled,
+                onPressed: () =>
+                    setState(() => _toolsEnabled = !_toolsEnabled),
+              ),
+              IconButton(
                 icon: const Icon(Icons.add_comment_outlined),
                 tooltip: l10n.chatNewConversation,
                 onPressed: _clearConversation,
@@ -518,6 +549,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (!isUser && msg.toolUses.isNotEmpty)
+            for (final tu in msg.toolUses)
+              _ToolUseIndicator(toolUse: tu),
           content,
           if (!isUser && !msg.isStreaming && msg.content.isNotEmpty)
             Align(
@@ -556,6 +590,65 @@ class _MessageBubbleState extends State<_MessageBubble> {
       child: Align(
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: bubble,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tool use indicator
+// ---------------------------------------------------------------------------
+
+class _ToolUseIndicator extends StatelessWidget {
+  const _ToolUseIndicator({required this.toolUse});
+
+  final _ToolUse toolUse;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final query = toolUse.query ?? '';
+    final label = toolUse.isComplete
+        ? l10n.chatSearched(query)
+        : l10n.chatSearching(query);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.travel_explore,
+                size: 16, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (!toolUse.isComplete) ...[
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
