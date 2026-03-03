@@ -23,6 +23,9 @@ class AppSettings {
   final anthropicApiKey = ValueNotifier<String>('');
   final googleApiKey = ValueNotifier<String>('');
 
+  /// Whether the floating server-console panel is visible. Not persisted.
+  final consoleVisible = ValueNotifier<bool>(false);
+
   // ---------------------------------------------------------------------------
   // Persistence keys
   // ---------------------------------------------------------------------------

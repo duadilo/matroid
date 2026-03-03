@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../app_settings.dart';
 import '../l10n/app_localizations.dart';
 import '../server/platform/server_platform.dart';
-import 'server_console.dart';
 
 // ---------------------------------------------------------------------------
 // Settings content (body-only — no Scaffold)
@@ -72,16 +71,18 @@ class _SettingsContentState extends State<SettingsContent> {
         const Divider(indent: 16, endIndent: 16),
         if (isDesktop) ...[
           _SectionHeader(l10n.sectionServer),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            leading: const Icon(Icons.terminal_outlined),
-            title: Text(l10n.serverConsoleTitle),
-            subtitle: Text(l10n.serverConsoleSubtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const ServerConsolePage(),
+          ValueListenableBuilder<bool>(
+            valueListenable: _settings.consoleVisible,
+            builder: (context, visible, _) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: const Icon(Icons.terminal_outlined),
+              title: Text(l10n.serverConsoleTitle),
+              subtitle: Text(l10n.serverConsoleSubtitle),
+              trailing: Icon(
+                visible ? Icons.picture_in_picture : Icons.open_in_new,
               ),
+              onTap: () =>
+                  _settings.consoleVisible.value = !_settings.consoleVisible.value,
             ),
           ),
           const Divider(indent: 16, endIndent: 16),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'app_settings.dart';
 import 'l10n/app_localizations.dart';
+import 'screens/server_console.dart';
+import 'server/platform/server_platform.dart';
 
 const double _kMobileBreak = 600;
 const double _kWideBreak = 1200;
@@ -31,6 +34,21 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
   int _selectedIndex = 0;
   bool _railExtended = false;
   bool _didInitRail = false;
+  Offset _panelPosition = const Offset(40, 80);
+
+  @override
+  void initState() {
+    super.initState();
+    AppSettings.instance.consoleVisible.addListener(_rebuildForPanel);
+  }
+
+  @override
+  void dispose() {
+    AppSettings.instance.consoleVisible.removeListener(_rebuildForPanel);
+    super.dispose();
+  }
+
+  void _rebuildForPanel() => setState(() {});
 
   @override
   void didChangeDependencies() {
@@ -65,11 +83,43 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
     return _buildWide(context, l10n, title);
   }
 
+  // ---- Floating console panel overlay -------------------------------------
+
+  /// Wraps [child] in a [Stack] with the draggable console panel on top.
+  /// On non-desktop platforms or when the panel is hidden, returns [child]
+  /// unchanged.
+  Widget _wrapWithPanel(Widget child) {
+    if (!isDesktop || !AppSettings.instance.consoleVisible.value) return child;
+    return LayoutBuilder(
+      builder: (_, constraints) => Stack(
+        children: [
+          child,
+          Positioned(
+            left: _panelPosition.dx,
+            top: _panelPosition.dy,
+            child: ServerConsolePanel(
+              onDragDelta: (delta) => setState(() {
+                _panelPosition = Offset(
+                  (_panelPosition.dx + delta.dx)
+                      .clamp(0, constraints.maxWidth - ServerConsolePanel.defaultWidth),
+                  (_panelPosition.dy + delta.dy)
+                      .clamp(0, constraints.maxHeight - ServerConsolePanel.defaultHeight),
+                );
+              }),
+              onClose: () =>
+                  AppSettings.instance.consoleVisible.value = false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---- Mobile layout (drawer) ----------------------------------------------
 
   Widget _buildMobile(
       BuildContext context, AppLocalizations l10n, String title) {
-    return Scaffold(
+    return _wrapWithPanel(Scaffold(
       appBar: AppBar(title: Text(title)),
       drawer: NavigationDrawer(
         selectedIndex: _selectedIndex,
@@ -106,14 +156,14 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
         ],
       ),
       body: widget.pages[_selectedIndex],
-    );
+    ));
   }
 
   // ---- Wide layout (rail) --------------------------------------------------
 
   Widget _buildWide(
       BuildContext context, AppLocalizations l10n, String title) {
-    return Scaffold(
+    return _wrapWithPanel(Scaffold(
       appBar: AppBar(title: Text(title)),
       body: Row(
         children: [
@@ -162,6 +212,6 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
           Expanded(child: widget.pages[_selectedIndex]),
         ],
       ),
-    );
+    ));
   }
 }
