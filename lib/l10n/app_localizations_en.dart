@@ -246,6 +246,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionApiKeys => 'API Keys';
 
   @override
+  String get sectionServer => 'Server';
+
+  @override
+  String get serverConsoleTitle => 'Server Console';
+
+  @override
+  String get serverConsoleSubtitle =>
+      'View stdout & stderr from the Python subprocess';
+
+  @override
   String get apiKeyOpenai => 'OpenAI API Key';
 
   @override

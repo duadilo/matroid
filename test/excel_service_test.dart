@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -17,6 +18,7 @@ class _FakeServer implements ServerBase {
   @override int? get port => 9999;
   @override bool get isRunning => true;
   @override List<String> get stderrLog => const [];
+  @override final logLines = ValueNotifier<List<LogLine>>(const []);
   @override Future<void> start() async {}
   @override Future<void> stop() async {}
 }

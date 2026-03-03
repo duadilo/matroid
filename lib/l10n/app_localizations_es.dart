@@ -247,6 +247,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get sectionApiKeys => 'Claves API';
 
   @override
+  String get sectionServer => 'Servidor';
+
+  @override
+  String get serverConsoleTitle => 'Consola del servidor';
+
+  @override
+  String get serverConsoleSubtitle =>
+      'Ver stdout y stderr del subproceso Python';
+
+  @override
   String get apiKeyOpenai => 'Clave API de OpenAI';
 
   @override

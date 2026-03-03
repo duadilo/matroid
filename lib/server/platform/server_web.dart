@@ -2,6 +2,8 @@
 /// Imported when dart.library.io is unavailable (web).
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../server_base.dart';
 
 export '../server_base.dart';
@@ -20,6 +22,7 @@ class PythonServer implements ServerBase {
   @override int? get port => null;
   @override bool get isRunning => false;
   @override List<String> get stderrLog => const [];
+  @override final ValueNotifier<List<LogLine>> logLines = ValueNotifier(const []);
 
   @override
   Future<void> start() async =>

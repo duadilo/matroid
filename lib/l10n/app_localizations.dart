@@ -518,6 +518,24 @@ abstract class AppLocalizations {
   /// **'API Keys'**
   String get sectionApiKeys;
 
+  /// Settings section header for server options
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get sectionServer;
+
+  /// Label for the server console settings tile and page title
+  ///
+  /// In en, this message translates to:
+  /// **'Server Console'**
+  String get serverConsoleTitle;
+
+  /// Subtitle for the server console settings tile
+  ///
+  /// In en, this message translates to:
+  /// **'View stdout & stderr from the Python subprocess'**
+  String get serverConsoleSubtitle;
+
   /// Label for the OpenAI API key field
   ///
   /// In en, this message translates to:

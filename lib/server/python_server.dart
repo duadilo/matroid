@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'server_base.dart';
 
 /// Manages the lifecycle of the bundled PyInstaller Python server process.
@@ -23,11 +25,18 @@ class PythonServer implements ServerBase {
   /// Stderr lines captured from the subprocess (for diagnostics).
   @override List<String> get stderrLog => List.unmodifiable(_stderrLog);
 
+  /// Live log feed combining stdout and stderr lines.
+  @override
+  final ValueNotifier<List<LogLine>> logLines = ValueNotifier([]);
+
   /// Spawns the server binary and waits up to 10 s for it to print `PORT:<n>`
   /// on stdout. Throws if the binary can't be started, exits early, or times out.
   @override
   Future<void> start() async {
     if (isRunning) return;
+
+    _stderrLog.clear();
+    logLines.value = [];
 
     final binary = _resolvedBinaryPath();
     // ignore: avoid_print
@@ -40,7 +49,10 @@ class PythonServer implements ServerBase {
     _process!.stderr
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter())
-        .listen(_stderrLog.add);
+        .listen((line) {
+          _stderrLog.add(line);
+          _appendLogLine(line, isError: true);
+        });
 
     final portCompleter = Completer<int>();
 
@@ -51,6 +63,7 @@ class PythonServer implements ServerBase {
           (line) {
             // ignore: avoid_print
             print('[PythonServer] stdout: $line');
+            _appendLogLine(line, isError: false);
             if (!portCompleter.isCompleted && line.startsWith('PORT:')) {
               final n = int.tryParse(line.substring(5).trim());
               if (n != null) portCompleter.complete(n);
@@ -95,6 +108,14 @@ class PythonServer implements ServerBase {
     _process?.kill();
     _process = null;
     _port = null;
+  }
+
+  void _appendLogLine(String text, {required bool isError}) {
+    const maxLines = 10000;
+    final current = logLines.value;
+    final updated = [...current, (text: text, isError: isError)];
+    if (updated.length > maxLines) updated.removeRange(0, updated.length - maxLines);
+    logLines.value = updated;
   }
 
   /// Resolves the path to the PyInstaller binary.

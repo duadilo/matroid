@@ -86,6 +86,10 @@
   "chatSystemPrompt": "Indicación del sistema",
 
   "sectionApiKeys": "Claves API",
+
+  "sectionServer": "Servidor",
+  "serverConsoleTitle": "Consola del servidor",
+  "serverConsoleSubtitle": "Ver stdout y stderr del subproceso Python",
   "apiKeyOpenai": "Clave API de OpenAI",
   "apiKeyAnthropic": "Clave API de Anthropic",
   "apiKeyGoogle": "Clave API de Google AI",

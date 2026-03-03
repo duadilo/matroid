@@ -248,6 +248,13 @@
 
   "sectionApiKeys": "API Keys",
   "@sectionApiKeys": { "description": "Settings section header for API keys" },
+
+  "sectionServer": "Server",
+  "@sectionServer": { "description": "Settings section header for server options" },
+  "serverConsoleTitle": "Server Console",
+  "@serverConsoleTitle": { "description": "Label for the server console settings tile and page title" },
+  "serverConsoleSubtitle": "View stdout & stderr from the Python subprocess",
+  "@serverConsoleSubtitle": { "description": "Subtitle for the server console settings tile" },
   "apiKeyOpenai": "OpenAI API Key",
   "@apiKeyOpenai": { "description": "Label for the OpenAI API key field" },
   "apiKeyAnthropic": "Anthropic API Key",
