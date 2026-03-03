@@ -14,8 +14,8 @@ const double _kWideBreak = 1200;
 //   600–1199  — collapsed icon rail (tablet)
 //   ≥ 1200 px — auto-extended rail (desktop)
 //
-// [pages] must have exactly eight entries:
-//   [HomeContent, SettingsContent, EditorContent, MarkdownContent, LatexContent, ChartsContent, MediaContent, ChatContent].
+// [pages] must have exactly five entries:
+//   [HomeContent, SettingsContent, EditorContent, ShowcaseContent, ChatContent].
 // Tests inject stub widgets so no server or asset dependencies are needed.
 
 class AdaptiveNav extends StatefulWidget {
@@ -55,10 +55,7 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
       0 => l10n.appTitle,
       1 => l10n.settingsTitle,
       2 => l10n.editorTitle,
-      3 => l10n.markdownTitle,
-      4 => l10n.latexTitle,
-      5 => l10n.chartsTitle,
-      6 => l10n.mediaTitle,
+      3 => l10n.showcaseTitle,
       _ => l10n.chatTitle,
     };
 
@@ -97,24 +94,9 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
             label: Text(l10n.editorTitle),
           ),
           NavigationDrawerDestination(
-            icon: const Icon(Icons.article_outlined),
-            selectedIcon: const Icon(Icons.article),
-            label: Text(l10n.markdownTitle),
-          ),
-          NavigationDrawerDestination(
-            icon: const Icon(Icons.functions),
-            selectedIcon: const Icon(Icons.functions),
-            label: Text(l10n.latexTitle),
-          ),
-          NavigationDrawerDestination(
-            icon: const Icon(Icons.bar_chart_outlined),
-            selectedIcon: const Icon(Icons.bar_chart),
-            label: Text(l10n.chartsTitle),
-          ),
-          NavigationDrawerDestination(
-            icon: const Icon(Icons.perm_media_outlined),
-            selectedIcon: const Icon(Icons.perm_media),
-            label: Text(l10n.mediaTitle),
+            icon: const Icon(Icons.dashboard_outlined),
+            selectedIcon: const Icon(Icons.dashboard),
+            label: Text(l10n.showcaseTitle),
           ),
           NavigationDrawerDestination(
             icon: const Icon(Icons.chat_outlined),
@@ -165,24 +147,9 @@ class _AdaptiveNavState extends State<AdaptiveNav> {
                 label: Text(l10n.editorTitle),
               ),
               NavigationRailDestination(
-                icon: const Icon(Icons.article_outlined),
-                selectedIcon: const Icon(Icons.article),
-                label: Text(l10n.markdownTitle),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.functions),
-                selectedIcon: const Icon(Icons.functions),
-                label: Text(l10n.latexTitle),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.bar_chart_outlined),
-                selectedIcon: const Icon(Icons.bar_chart),
-                label: Text(l10n.chartsTitle),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.perm_media_outlined),
-                selectedIcon: const Icon(Icons.perm_media),
-                label: Text(l10n.mediaTitle),
+                icon: const Icon(Icons.dashboard_outlined),
+                selectedIcon: const Icon(Icons.dashboard),
+                label: Text(l10n.showcaseTitle),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.chat_outlined),

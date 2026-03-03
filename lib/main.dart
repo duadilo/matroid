@@ -7,12 +7,9 @@ import 'package:flutter/material.dart';
 import 'adaptive_nav.dart';
 import 'app_settings.dart';
 import 'app_state.dart';
-import 'screens/charts_content.dart';
 import 'screens/chat_content.dart';
-import 'screens/media_content.dart';
 import 'screens/editor_content.dart';
-import 'screens/latex_content.dart';
-import 'screens/markdown_content.dart';
+import 'screens/showcase_content.dart';
 import 'server/chat_service.dart';
 import 'server/excel_service.dart';
 import 'screens/home_content.dart';
@@ -171,10 +168,7 @@ class _MainAppState extends State<MainApp> {
         HomeContent(),
         SettingsContent(),
         EditorContent(),
-        MarkdownContent(),
-        LatexContent(),
-        ChartsContent(),
-        MediaContent(),
+        ShowcaseContent(),
         ChatContent(),
       ]),
     );

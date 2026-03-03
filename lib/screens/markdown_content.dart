@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:flutter_highlight/themes/atom-one-light.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:highlight/languages/markdown.dart' as md_lang;
 import 'package:markdown/markdown.dart' as md;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart' show PdfGoogleFonts;
 
+import '../app_settings.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/save_file.dart';
 
@@ -249,6 +250,9 @@ class _MarkdownContentState extends State<MarkdownContent> {
         controller: _controller,
         focusNode: _focusNode,
         expands: true,
+        textStyle: TextStyle(
+          fontFamily: AppSettings.instance.monoFontFamily,
+        ),
       ),
     );
   }

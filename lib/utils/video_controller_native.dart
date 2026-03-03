@@ -6,4 +6,4 @@ import 'package:video_player/video_player.dart';
 VideoPlayerController createVideoController(XFile file) =>
     VideoPlayerController.file(File(file.path));
 
-bool get isCameraAvailable => !Platform.isMacOS;
+bool get isCameraAvailable => Platform.isAndroid || Platform.isIOS;

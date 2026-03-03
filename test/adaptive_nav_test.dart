@@ -36,28 +36,10 @@ class _StubEditor extends StatelessWidget {
   Widget build(BuildContext context) => const Text('stub-editor');
 }
 
-class _StubMarkdown extends StatelessWidget {
-  const _StubMarkdown();
+class _StubShowcase extends StatelessWidget {
+  const _StubShowcase();
   @override
-  Widget build(BuildContext context) => const Text('stub-markdown');
-}
-
-class _StubLatex extends StatelessWidget {
-  const _StubLatex();
-  @override
-  Widget build(BuildContext context) => const Text('stub-latex');
-}
-
-class _StubCharts extends StatelessWidget {
-  const _StubCharts();
-  @override
-  Widget build(BuildContext context) => const Text('stub-charts');
-}
-
-class _StubMedia extends StatelessWidget {
-  const _StubMedia();
-  @override
-  Widget build(BuildContext context) => const Text('stub-media');
+  Widget build(BuildContext context) => const Text('stub-showcase');
 }
 
 class _StubChat extends StatelessWidget {
@@ -83,10 +65,7 @@ Widget _buildApp(Size size, {Locale locale = const Locale('en')}) =>
         _StubHome(),
         _StubSettings(),
         _StubEditor(),
-        _StubMarkdown(),
-        _StubLatex(),
-        _StubCharts(),
-        _StubMedia(),
+        _StubShowcase(),
         _StubChat(),
       ]),
     );
@@ -139,7 +118,7 @@ void main() {
       expect(scaffold.drawer, isNotNull);
     });
 
-    testWidgets('Drawer contains 6 NavigationDrawerDestination entries',
+    testWidgets('Drawer contains 5 NavigationDrawerDestination entries',
         (tester) async {
       await tester.pumpWidget(_buildApp(_narrow));
       await tester.pump();
@@ -149,7 +128,7 @@ void main() {
       scaffoldState.openDrawer();
       await tester.pumpAndSettle();
 
-      expect(find.byType(NavigationDrawerDestination), findsNWidgets(8));
+      expect(find.byType(NavigationDrawerDestination), findsNWidgets(5));
     });
 
     testWidgets('Tap Settings destination → shows stub-settings, hides stub-home',
@@ -303,14 +282,14 @@ void main() {
       expect(rail.extended, isTrue);
     });
 
-    testWidgets('Tap perm_media_outlined icon → stub-media shown', (tester) async {
+    testWidgets('Tap dashboard_outlined icon → stub-showcase shown', (tester) async {
       await tester.pumpWidget(_buildApp(_medium));
       await tester.pump();
 
-      await tester.tap(find.byIcon(Icons.perm_media_outlined));
+      await tester.tap(find.byIcon(Icons.dashboard_outlined));
       await tester.pumpAndSettle();
 
-      expect(find.text('stub-media'), findsOneWidget);
+      expect(find.text('stub-showcase'), findsOneWidget);
       expect(find.text('stub-home'), findsNothing);
     });
 
@@ -385,15 +364,15 @@ void main() {
       expect(find.text('Matroid'), findsNothing);
     });
 
-    testWidgets('Wide, Media selected → "Media" shown, "Matroid" absent',
+    testWidgets('Wide, Showcase selected → "Showcase" shown, "Matroid" absent',
         (tester) async {
       await tester.pumpWidget(_buildApp(_wide));
       await tester.pump();
 
-      await tester.tap(find.byIcon(Icons.perm_media_outlined));
+      await tester.tap(find.byIcon(Icons.dashboard_outlined));
       await tester.pumpAndSettle();
 
-      expect(find.text('Media'), findsAtLeastNWidgets(1));
+      expect(find.text('Showcase'), findsAtLeastNWidgets(1));
       expect(find.text('Matroid'), findsNothing);
     });
 

@@ -5,6 +5,7 @@ import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:highlight/languages/javascript.dart';
 import 'package:highlight/languages/python.dart';
 
+import '../app_settings.dart';
 import '../app_state.dart';
 import '../server/excel_service.dart';
 
@@ -157,6 +158,9 @@ class _EditorContentState extends State<EditorContent> {
               controller: _controller,
               focusNode: _focusNode,
               expands: true,
+              textStyle: TextStyle(
+                fontFamily: AppSettings.instance.monoFontFamily,
+              ),
             ),
           ),
         ),
@@ -264,7 +268,7 @@ class _EditorContentState extends State<EditorContent> {
 
     final result = _lastResult!;
     final codeStyle = TextStyle(
-      fontFamily: 'monospace',
+      fontFamily: AppSettings.instance.monoFontFamily ?? 'monospace',
       fontSize: 13,
       color: isDark ? Colors.white70 : Colors.black87,
     );

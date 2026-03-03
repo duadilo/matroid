@@ -47,10 +47,16 @@ Future<String?> extractServerBinary() async {
     await hashFile.writeAsString(assetHash);
     if (!Platform.isWindows) {
       await Process.run('chmod', ['+x', cached.path]);
+    }
+    if (Platform.isMacOS) {
       // Clear quarantine attributes and ad-hoc sign so macOS Gatekeeper
       // doesn't SIGKILL the unsigned PyInstaller binary.
-      await Process.run('xattr', ['-cr', cached.path]);
-      await Process.run('codesign', ['--force', '--sign', '-', cached.path]);
+      // These are best-effort — failure (e.g. no Xcode CLI tools) is
+      // non-fatal; the binary may still run in some environments.
+      try {
+        await Process.run('xattr', ['-cr', cached.path]);
+        await Process.run('codesign', ['--force', '--sign', '-', cached.path]);
+      } catch (_) {}
     }
 
     return cached.path;

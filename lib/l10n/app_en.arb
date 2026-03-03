@@ -16,6 +16,9 @@
   "editorTitle": "Editor",
   "@editorTitle": { "description": "Title of the code editor page and nav destination label" },
 
+  "showcaseTitle": "Showcase",
+  "@showcaseTitle": { "description": "Title of the combined showcase page (Math, Markdown, Charts, Media)" },
+
   "sectionAppearance": "Appearance",
   "@sectionAppearance": { "description": "Settings section header for appearance options" },
 

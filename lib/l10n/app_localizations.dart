@@ -128,6 +128,12 @@ abstract class AppLocalizations {
   /// **'Editor'**
   String get editorTitle;
 
+  /// Title of the combined showcase page (Math, Markdown, Charts, Media)
+  ///
+  /// In en, this message translates to:
+  /// **'Showcase'**
+  String get showcaseTitle;
+
   /// Settings section header for appearance options
   ///
   /// In en, this message translates to:

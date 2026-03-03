@@ -1,7 +1,11 @@
-.PHONY: test test-flutter test-python setup-test-venv
+.PHONY: test test-flutter test-python setup-test-venv run
 
 # Run both test suites.
 test: test-flutter test-python
+
+run:
+	flutter gen-l10n
+	flutter run
 
 # ---------------------------------------------------------------------------
 # Flutter unit tests (headless, no display needed)

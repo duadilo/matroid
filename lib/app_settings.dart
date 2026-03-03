@@ -82,6 +82,12 @@ class AppSettings {
     }
   }
 
+  /// Monospace font family to use in editors and console output.
+  /// Returns `'OpenDyslexicMono'` when [AppFont.openDyslexic] is active so
+  /// that code areas match the user's dyslexia-friendly font choice.
+  String? get monoFontFamily =>
+      fontFamily.value == AppFont.openDyslexic ? 'OpenDyslexicMono' : null;
+
   /// Returns a map of non-empty API keys keyed by provider name.
   Map<String, String> get apiKeys {
     final keys = <String, String>{};

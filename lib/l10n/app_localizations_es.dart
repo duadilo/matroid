@@ -24,6 +24,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get editorTitle => 'Editor';
 
   @override
+  String get showcaseTitle => 'Galería';
+
+  @override
   String get sectionAppearance => 'Apariencia';
 
   @override
