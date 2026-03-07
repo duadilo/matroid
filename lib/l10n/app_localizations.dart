@@ -589,6 +589,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Searched: {query}'**
   String chatSearched(String query);
+
+  /// Settings section header for the about section
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get sectionAbout;
+
+  /// Title for the about tile
+  ///
+  /// In en, this message translates to:
+  /// **'About Matroid'**
+  String get aboutTitle;
+
+  /// Subtitle for the about tile
+  ///
+  /// In en, this message translates to:
+  /// **'Version, licenses & attributions'**
+  String get aboutSubtitle;
+
+  /// Button label to view open-source licenses
+  ///
+  /// In en, this message translates to:
+  /// **'View Licenses'**
+  String get aboutViewLicenses;
 }
 
 class _AppLocalizationsDelegate

@@ -130,7 +130,7 @@ class ChatService {
       'provider': provider,
       'model': model,
       'messages': messages.map((m) => m.toJson()).toList(),
-      if (baseUrl != null) 'base_url': baseUrl,
+      'base_url': ?baseUrl,
       if (systemPrompt != null && systemPrompt.isNotEmpty)
         'system_prompt': systemPrompt,
       if (apiKeys != null && apiKeys.isNotEmpty) 'api_keys': apiKeys,

@@ -285,4 +285,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String chatSearched(String query) {
     return 'Searched: $query';
   }
+
+  @override
+  String get sectionAbout => 'About';
+
+  @override
+  String get aboutTitle => 'About Matroid';
+
+  @override
+  String get aboutSubtitle => 'Version, licenses & attributions';
+
+  @override
+  String get aboutViewLicenses => 'View Licenses';
 }

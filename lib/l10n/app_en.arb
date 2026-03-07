@@ -283,5 +283,14 @@
     "placeholders": {
       "query": { "type": "String", "description": "The search query" }
     }
-  }
+  },
+
+  "sectionAbout": "About",
+  "@sectionAbout": { "description": "Settings section header for the about section" },
+  "aboutTitle": "About Matroid",
+  "@aboutTitle": { "description": "Title for the about tile" },
+  "aboutSubtitle": "Version, licenses & attributions",
+  "@aboutSubtitle": { "description": "Subtitle for the about tile" },
+  "aboutViewLicenses": "View Licenses",
+  "@aboutViewLicenses": { "description": "Button label to view open-source licenses" }
 }

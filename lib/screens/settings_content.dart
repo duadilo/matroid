@@ -87,7 +87,112 @@ class _SettingsContentState extends State<SettingsContent> {
           ),
           const Divider(indent: 16, endIndent: 16),
         ],
+        _SectionHeader(l10n.sectionAbout),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: const Icon(Icons.info_outline),
+          title: Text(l10n.aboutTitle),
+          subtitle: Text(l10n.aboutSubtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            showAboutDialog(
+              context: context,
+              applicationName: l10n.appTitle,
+              applicationVersion: '0.1.0',
+              applicationIcon: const Icon(Icons.apps, size: 48),
+              applicationLegalese: '\u00a9 2026 Matroid contributors',
+              children: [
+                const SizedBox(height: 24),
+                Text(
+                  'Open-source licenses',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This app uses the following open-source packages and fonts. '
+                  'Tap "View Licenses" below for full license texts.',
+                ),
+                const SizedBox(height: 16),
+                ..._attributionItems,
+              ],
+            );
+          },
+        ),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: const Icon(Icons.description_outlined),
+          title: Text(l10n.aboutViewLicenses),
+          onTap: () {
+            showLicensePage(
+              context: context,
+              applicationName: l10n.appTitle,
+              applicationVersion: '0.1.0',
+              applicationIcon: const Icon(Icons.apps, size: 48),
+              applicationLegalese: '\u00a9 2026 Matroid contributors',
+            );
+          },
+        ),
+        const SizedBox(height: 32),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Attribution summary shown in the About dialog
+// ---------------------------------------------------------------------------
+
+const _attributionItems = <Widget>[
+  _Attribution('http', 'BSD-3-Clause', 'Dart project authors'),
+  _Attribution('file_picker', 'MIT', 'Miguel Ruivo'),
+  _Attribution('path_provider', 'BSD-3-Clause', 'Flutter authors'),
+  _Attribution('crypto', 'BSD-3-Clause', 'Dart project authors'),
+  _Attribution('shared_preferences', 'BSD-3-Clause', 'Flutter authors'),
+  _Attribution('flutter_code_editor', 'Apache-2.0', 'akvelon'),
+  _Attribution('flutter_highlight', 'MIT', 'git-sidd'),
+  _Attribution('highlight', 'MIT', 'git-sidd'),
+  _Attribution('flutter_markdown_plus', 'BSD-3-Clause', 'Taha Tesser'),
+  _Attribution('flutter_math_fork', 'Apache-2.0', 'SimonWang'),
+  _Attribution('printing', 'Apache-2.0', 'David MUSIC'),
+  _Attribution('pdf', 'Apache-2.0', 'David MUSIC'),
+  _Attribution('markdown', 'BSD-3-Clause', 'Dart project authors'),
+  _Attribution('fl_chart', 'MIT', 'Iman Khoshabi'),
+  _Attribution('image_picker', 'BSD-3-Clause', 'Flutter authors'),
+  _Attribution('video_player', 'BSD-3-Clause', 'Flutter authors'),
+  _Attribution('chewie', 'MIT', 'Brian Egan'),
+  _Attribution('accessibility_tools', 'MIT', 'Rebelappstudio'),
+  _Attribution('intl', 'BSD-3-Clause', 'Dart project authors'),
+  _Attribution('OpenDyslexic (font)', 'SIL OFL 1.1', 'Abbie Gonzalez'),
+  _Attribution('Lexend (font)', 'SIL OFL 1.1', 'Bonnie Shaver-Troup / Thomas Jockin'),
+];
+
+class _Attribution extends StatelessWidget {
+  const _Attribution(this.name, this.license, this.author);
+
+  final String name;
+  final String license;
+  final String author;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 200,
+            child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(license, style: const TextStyle(fontSize: 12)),
+          ),
+          Expanded(
+            child: Text(author, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -99,5 +99,10 @@
   "chatToolsEnabled": "Búsqueda web activada",
   "chatToolsDisabled": "Búsqueda web desactivada",
   "chatSearching": "Buscando: {query}",
-  "chatSearched": "Buscado: {query}"
+  "chatSearched": "Buscado: {query}",
+
+  "sectionAbout": "Acerca de",
+  "aboutTitle": "Acerca de Matroid",
+  "aboutSubtitle": "Versión, licencias y atribuciones",
+  "aboutViewLicenses": "Ver licencias"
 }
