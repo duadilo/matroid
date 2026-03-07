@@ -209,6 +209,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'No media selected. Use the toolbar buttons to pick or capture media.';
 
   @override
+  String get mediaViewImage => 'View image';
+
+  @override
+  String get mediaPlayVideo => 'Play video';
+
+  @override
+  String get mediaRemoveItem => 'Remove';
+
+  @override
+  String get mediaVideoPlayer => 'Video player';
+
+  @override
   String get chatTitle => 'Chat';
 
   @override

@@ -73,6 +73,10 @@
   "buttonRecordVideo": "Grabar video",
   "mediaCameraUnavailable": "Cámara no disponible en esta plataforma",
   "mediaEmptyState": "Sin medios seleccionados. Usa los botones para elegir o capturar medios.",
+  "mediaViewImage": "Ver imagen",
+  "mediaPlayVideo": "Reproducir vídeo",
+  "mediaRemoveItem": "Eliminar",
+  "mediaVideoPlayer": "Reproductor de vídeo",
 
   "chatTitle": "Chat",
   "chatEmptyState": "Selecciona un proveedor y modelo, luego inicia una conversación.",

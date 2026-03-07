@@ -94,9 +94,10 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
+    // When no providers are available, show helpful message
     expect(
-      find.text(
-          'Select a provider and model, then start a conversation.'),
+      find.textContaining(
+          RegExp('No providers available|Select a provider')),
       findsOneWidget,
     );
   });

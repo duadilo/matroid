@@ -452,6 +452,30 @@ abstract class AppLocalizations {
   /// **'No media selected. Use the toolbar buttons to pick or capture media.'**
   String get mediaEmptyState;
 
+  /// Semantic label for tapping an image tile
+  ///
+  /// In en, this message translates to:
+  /// **'View image'**
+  String get mediaViewImage;
+
+  /// Semantic label for tapping a video tile
+  ///
+  /// In en, this message translates to:
+  /// **'Play video'**
+  String get mediaPlayVideo;
+
+  /// Tooltip for the remove media item button
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get mediaRemoveItem;
+
+  /// Semantic label for the video player dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Video player'**
+  String get mediaVideoPlayer;
+
   /// Title of the chat page and nav destination label
   ///
   /// In en, this message translates to:

@@ -3,6 +3,7 @@ import 'dart:ui' show AppExitResponse;
 import 'package:accessibility_tools/accessibility_tools.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'adaptive_nav.dart';
 import 'app_settings.dart';
@@ -30,6 +31,7 @@ final _navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb) MediaKit.ensureInitialized();
 
   // Load all persisted user settings (theme, locale, etc.).
   await AppSettings.instance.load();

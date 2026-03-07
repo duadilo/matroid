@@ -73,7 +73,12 @@ class _ChatContentState extends State<ChatContent> {
   bool _toolsEnabled = false;
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
+  final _customBaseUrlController = TextEditingController();
   String? _modelsError;
+  
+  // Custom API endpoint configuration
+  String? _customBaseUrl;
+  bool _showCustomEndpoint = false;
 
   @override
   void initState() {
@@ -85,6 +90,7 @@ class _ChatContentState extends State<ChatContent> {
   void dispose() {
     _inputController.dispose();
     _scrollController.dispose();
+    _customBaseUrlController.dispose();
     super.dispose();
   }
 
@@ -96,12 +102,20 @@ class _ChatContentState extends State<ChatContent> {
         _models = models;
         _modelsError = null;
         if (models.providers.isNotEmpty) {
-          _selectedProvider ??= models.providers.keys.first;
+          // Prefer Qwen provider if available, otherwise use first provider
+          _selectedProvider ??= models.providers.containsKey('qwen')
+              ? 'qwen'
+              : models.providers.keys.first;
           final providerModels = models.providers[_selectedProvider]!;
           if (_selectedModel == null ||
               !providerModels.contains(_selectedModel)) {
             _selectedModel = providerModels.first;
           }
+        }
+        // Initialize the custom base URL controller if needed
+        if (_customBaseUrl != null && 
+            _customBaseUrlController.text != _customBaseUrl) {
+          _customBaseUrlController.text = _customBaseUrl!;
         }
       });
     } catch (e) {
@@ -162,6 +176,7 @@ class _ChatContentState extends State<ChatContent> {
         systemPrompt: _systemPrompt,
         apiKeys: apiKeys.isNotEmpty ? apiKeys : null,
         toolsEnabled: _toolsEnabled,
+        baseUrl: _selectedProvider == 'qwen' ? _customBaseUrl : null,
       )) {
         if (!mounted) return;
         if (event is TextToken) {
@@ -279,6 +294,32 @@ class _ChatContentState extends State<ChatContent> {
               : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 200),
         ),
+        // Custom API endpoint
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _customBaseUrlController,
+              decoration: InputDecoration(
+                labelText: 'Custom API Base URL',
+                hintText: 'e.g., http://localhost:8080/v1',
+                border: const OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: const Icon(Icons.http),
+                helperText: _selectedProvider == 'qwen'
+                    ? 'Using Qwen provider'
+                    : null,
+              ),
+              maxLines: 1,
+              onChanged: (v) => setState(() => _customBaseUrl = v),
+            ),
+          ),
+          crossFadeState: _showCustomEndpoint
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
         const Divider(height: 1),
         // Messages
         Expanded(
@@ -286,15 +327,37 @@ class _ChatContentState extends State<ChatContent> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(
-                      _modelsError != null
-                          ? l10n.chatNoProviders
-                          : l10n.chatEmptyState,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _modelsError != null
+                              ? Icons.error_outline
+                              : Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _modelsError != null
+                              ? 'Backend connection error:\n$_modelsError'
+                              : _models == null ||
+                                      (_models?.providers.isEmpty ?? true)
+                                  ? 'No providers available.\n\nMake sure the Python server is running:\n  cd server && python main.py\n\nThen refresh the app.'
+                                  : l10n.chatEmptyState,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -362,6 +425,14 @@ class _ChatContentState extends State<ChatContent> {
             children: [
               Chip(label: Text(l10n.chatTitle)),
               const Spacer(),
+              IconButton(
+                icon: Icon(_showCustomEndpoint
+                    ? Icons.api
+                    : Icons.api_outlined),
+                tooltip: 'Custom API Endpoint',
+                onPressed: () => setState(
+                    () => _showCustomEndpoint = !_showCustomEndpoint),
+              ),
               IconButton(
                 icon: Icon(_systemPromptExpanded
                     ? Icons.expand_less

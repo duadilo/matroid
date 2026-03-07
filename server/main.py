@@ -388,6 +388,7 @@ _ENV_KEY_MAP = {
     "openai": "OPENAI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "gemini": "GOOGLE_API_KEY",
+    "qwen": "QWEN_API_KEY",  # Optional: set if your custom endpoint requires auth
 }
 
 _DEFAULT_MODELS: dict[str, list[str]] = {
@@ -398,6 +399,7 @@ _DEFAULT_MODELS: dict[str, list[str]] = {
         "claude-opus-4-20250514",
     ],
     "gemini": ["gemini-2.0-flash", "gemini-2.5-pro-preview-06-05"],
+    "qwen": ["qwen3.5-122b-a10b"],
 }
 
 
@@ -436,9 +438,12 @@ async def _stream_openai(req: ChatStreamRequest) -> AsyncGenerator[tuple[str, An
     import openai
 
     api_key = _get_api_key("openai", req)
-    if not api_key:
+    # Allow empty API key if custom base_url is provided (for local/OpenAI-compatible endpoints)
+    if not api_key and not req.base_url:
         raise ValueError("OpenAI API key not configured")
-    client = openai.AsyncOpenAI(api_key=api_key, base_url=req.base_url)
+    # Use a dummy key if none provided but custom endpoint is set
+    effective_api_key = api_key or "dummy-key-for-custom-endpoint"
+    client = openai.AsyncOpenAI(api_key=effective_api_key, base_url=req.base_url)
 
     messages: list[dict[str, Any]] = []
     if req.system_prompt:
@@ -679,6 +684,7 @@ _STREAM_PROVIDERS = {
     "openai": _stream_openai,
     "anthropic": _stream_anthropic,
     "gemini": _stream_gemini,
+    "qwen": _stream_openai,  # Qwen is OpenAI-compatible, reuse the same handler
 }
 
 
@@ -692,7 +698,10 @@ async def chat_models() -> dict[str, Any]:
     """Return available models per provider based on configured API keys."""
     providers: dict[str, list[str]] = {}
     for provider, env_var in _ENV_KEY_MAP.items():
-        if os.environ.get(env_var):
+        if provider == "qwen":
+            # Always include qwen (custom endpoint doesn't require env var)
+            providers[provider] = _DEFAULT_MODELS[provider]
+        elif os.environ.get(env_var):
             providers[provider] = _DEFAULT_MODELS[provider]
     return {"providers": providers}
 

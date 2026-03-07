@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:video_player/video_player.dart';
 
 import '../l10n/app_localizations.dart';
@@ -48,7 +50,7 @@ class _MediaContentState extends State<MediaContent> {
   }
 
   Future<void> _pickVideo() async {
-    final xfile = await _picker.pickVideo(source: ImageSource.gallery);
+    final xfile = await vc.pickVideoFile();
     if (xfile == null) return;
     setState(() {
       _items.add(MediaItem(file: xfile, type: MediaType.video));
@@ -97,18 +99,19 @@ class _MediaContentState extends State<MediaContent> {
                 tooltip: l10n.buttonPickImage,
                 onPressed: _pickImage,
               ),
-              IconButton(
-                icon: const Icon(Icons.video_library_outlined),
-                tooltip: l10n.buttonPickVideo,
-                onPressed: _pickVideo,
-              ),
+              if (vc.isVideoPickSupported)
+                IconButton(
+                  icon: const Icon(Icons.video_library_outlined),
+                  tooltip: l10n.buttonPickVideo,
+                  onPressed: _pickVideo,
+                ),
               if (cameraOk)
                 IconButton(
                   icon: const Icon(Icons.camera_alt_outlined),
                   tooltip: l10n.buttonTakePhoto,
                   onPressed: _takePhoto,
                 ),
-              if (cameraOk)
+              if (cameraOk && vc.isVideoSupported)
                 IconButton(
                   icon: const Icon(Icons.videocam_outlined),
                   tooltip: l10n.buttonRecordVideo,
@@ -162,6 +165,7 @@ class _MediaContentState extends State<MediaContent> {
           right: 4,
           child: IconButton.filled(
             icon: const Icon(Icons.close, size: 18),
+            tooltip: AppLocalizations.of(context)!.mediaRemoveItem,
             style: IconButton.styleFrom(
               backgroundColor: Colors.black54,
               foregroundColor: Colors.white,
@@ -176,19 +180,40 @@ class _MediaContentState extends State<MediaContent> {
   }
 
   Widget _buildImageTile(BuildContext context, MediaItem item) {
-    return GestureDetector(
-      onTap: () => _showImageDialog(context, item.bytes!),
-      child: Image.memory(item.bytes!, fit: BoxFit.cover),
+    final l10n = AppLocalizations.of(context)!;
+    return Semantics(
+      label: l10n.mediaViewImage,
+      button: true,
+      child: GestureDetector(
+        onTap: () => _showImageDialog(context, item.bytes!),
+        child: Image.memory(item.bytes!, fit: BoxFit.cover),
+      ),
     );
   }
 
   Widget _buildVideoTile(BuildContext context, MediaItem item) {
-    return GestureDetector(
-      onTap: () => _showVideoDialog(context, item.file),
-      child: Container(
-        color: Colors.black87,
-        child: const Center(
-          child: Icon(Icons.play_circle_outline, size: 48, color: Colors.white),
+    final l10n = AppLocalizations.of(context)!;
+    return Semantics(
+      label: l10n.mediaPlayVideo,
+      button: true,
+      child: GestureDetector(
+        onTap: vc.isVideoSupported
+            ? () => _showVideoDialog(context, item.file)
+            : () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Video playback is not supported on this platform.'),
+                    duration: Duration(seconds: 3),
+                  ),
+                ),
+        child: Container(
+          color: Colors.black87,
+          child: Center(
+            child: Icon(
+              vc.isVideoSupported ? Icons.play_circle_outline : Icons.videocam_off_outlined,
+              size: 48,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
@@ -206,9 +231,13 @@ class _MediaContentState extends State<MediaContent> {
   }
 
   void _showVideoDialog(BuildContext context, XFile file) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
-      builder: (_) => Dialog(child: _VideoPlayerDialog(file: file)),
+      builder: (_) => Semantics(
+        label: l10n.mediaVideoPlayer,
+        child: Dialog(child: _VideoPlayerDialog(file: file)),
+      ),
     );
   }
 }
@@ -226,28 +255,45 @@ class _VideoPlayerDialog extends StatefulWidget {
 }
 
 class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
-  late final VideoPlayerController _videoController;
+  // video_player + chewie path (Android / iOS / macOS / web)
+  VideoPlayerController? _videoController;
   ChewieController? _chewieController;
+
+  // media_kit path (Linux / Windows)
+  Player? _mediaKitPlayer;
+  VideoController? _mediaKitController;
 
   @override
   void initState() {
     super.initState();
-    _videoController = vc.createVideoController(widget.file);
-    _videoController.initialize().then((_) {
-      if (!mounted) return;
-      setState(() {
-        _chewieController = ChewieController(
-          videoPlayerController: _videoController,
-          autoPlay: true,
-        );
+    if (vc.useMediaKit) {
+      _mediaKitPlayer = Player();
+      _mediaKitController = VideoController(
+        _mediaKitPlayer!,
+        configuration: const VideoControllerConfiguration(
+          enableHardwareAcceleration: false,
+        ),
+      );
+      _mediaKitPlayer!.open(Media(widget.file.path));
+    } else {
+      _videoController = vc.createVideoController(widget.file);
+      _videoController!.initialize().then((_) {
+        if (!mounted) return;
+        setState(() {
+          _chewieController = ChewieController(
+            videoPlayerController: _videoController!,
+            autoPlay: true,
+          );
+        });
       });
-    });
+    }
   }
 
   @override
   void dispose() {
     _chewieController?.dispose();
-    _videoController.dispose();
+    _videoController?.dispose();
+    _mediaKitPlayer?.dispose();
     super.dispose();
   }
 
@@ -256,9 +302,13 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
     final screenHeight = MediaQuery.of(context).size.height;
     return SizedBox(
       height: screenHeight * 0.6,
-      child: _chewieController != null
-          ? Chewie(controller: _chewieController!)
-          : const Center(child: CircularProgressIndicator()),
+      child: vc.useMediaKit
+          ? (_mediaKitController != null
+              ? Video(controller: _mediaKitController!)
+              : const Center(child: CircularProgressIndicator()))
+          : (_chewieController != null
+              ? Chewie(controller: _chewieController!)
+              : const Center(child: CircularProgressIndicator())),
     );
   }
 }

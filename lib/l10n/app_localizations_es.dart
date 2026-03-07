@@ -210,6 +210,18 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sin medios seleccionados. Usa los botones para elegir o capturar medios.';
 
   @override
+  String get mediaViewImage => 'Ver imagen';
+
+  @override
+  String get mediaPlayVideo => 'Reproducir vídeo';
+
+  @override
+  String get mediaRemoveItem => 'Eliminar';
+
+  @override
+  String get mediaVideoPlayer => 'Reproductor de vídeo';
+
+  @override
   String get chatTitle => 'Chat';
 
   @override
